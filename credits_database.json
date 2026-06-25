@@ -1,0 +1,503 @@
+{
+  "archive": "MUSTAFA MIXING - Global Music Credits & Rights Archive",
+  "artist": "Mustafa Kamal (مصطفى كمال)",
+  "last_updated": "2026-06-25T06:40:00Z",
+  "database_version": "1.1.0",
+  "studio": "ستوديو بغداد - Studio Baghdad",
+  "channel_id": "UCuH7V5r6858lIrtIs-8Ayww",
+  "profile": {
+    "full_name": "Mustafa Kamal (مصطفى كمال)",
+    "profession": "Mixing & Mastering Engineer, Audio Engineer, Composer, Arranger, Producer",
+    "nationality": "Iraqi",
+    "base_location": "Fujairah, UAE",
+    "certification": "Berklee College of Music - Mixing and Mastering",
+    "studio_name": "ستوديو بغداد - Studio Baghdad",
+    "youtube_channel": "@StudioBaghdad (91.8K subscribers, 1.79M views)",
+    "instagram": "@mustafa_mastring",
+    "facebook": "fb.com/musstafa.ali",
+    "contact_iraq": "009647702889686",
+    "contact_uae": "00971503889180",
+    "known_roles": [
+      "Mixing Engineer",
+      "Mastering Engineer",
+      "Recording Engineer",
+      "Sound Engineer",
+      "Audio Engineer",
+      "Composer",
+      "Arranger",
+      "Music Producer",
+      "Executive Producer",
+      "Cellist",
+      "Bass Guitarist"
+    ]
+  },
+  "verified_credits": [
+    {
+      "track": "Haqqet Helmi (حققت حلمي)",
+      "artist": "Ali Rasheed (علي رشيد)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic Pop / Iraqi",
+      "roles": [
+        "Arranger (توزيع)",
+        "Mix Engineer (مكس)",
+        "Mastering Engineer (ماسترينغ)"
+      ],
+      "exact_credit": "توزيع وميكس وماسترينغ / مصطفى كمال",
+      "source_url": "https://www.youtube.com/watch?v=XIeeoG22wrA",
+      "platform": "YouTube (Studio Baghdad)",
+      "label": "قنوات ميوزك (Digital Distribution)",
+      "additional_credits": {
+        "composer": "Ali Rasheed",
+        "lyricist": "Ahmed Al-Miyali (أحمد الميالي)",
+        "solo": "Ramses George (رامسن جورج)"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "الغباء العاطفي (Emotional Stupidity)",
+      "artist": "Ali Rasheed (علي رشيد)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic Pop / Iraqi",
+      "roles": [
+        "Composer (ألحان)",
+        "Arranger (توزيع)",
+        "Mix Engineer (مكس)"
+      ],
+      "exact_credit": "ألحان مصطفى كمال / توزيع ومكس مصطفى كمال",
+      "source_url": "https://www.youtube.com/watch?v=9qgVosIcKSk",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "lyricist": "Yaser Raad (ياسر رعد)",
+        "violin": "Sabah Khalil (صباح خليل)",
+        "oud": "Haider Karim (حيدر كريم)",
+        "violins": "Mohanad Ghazi (مهند غازي)"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "كافي انصدم (Enough Shock)",
+      "artist": "Saja Akram (سجى اكرم)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic Pop / Iraqi",
+      "roles": [
+        "Composer (ألحان)",
+        "Arranger (توزيع)",
+        "Mix Engineer (مكس)",
+        "Mastering Engineer (ماستر)"
+      ],
+      "exact_credit": "ألحان وتوزيع: مصطفى كمال / مكس وماستر: مصطفى كمال",
+      "source_url": "https://www.youtube.com/watch?v=Eya8hNahj8o",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "lyricist": "Ahmed Al-Miyali (أحمد الميالي)",
+        "jozah": "Mustafa Mahdi (مصطفى مهدي)",
+        "guitars": "Sweihan (سويهان)",
+        "video_edit": "Omar Jawad (عمر جواد)"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "يلا ننسى الهم (Let's Forget Worries)",
+      "artist": "Khalid Ibrahim (خالد ابراهيم)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic / Iraqi",
+      "roles": [
+        "Executive Producer (إشراف عام)"
+      ],
+      "exact_credit": "إشراف عام / مصطفى كمال",
+      "source_url": "https://www.youtube.com/watch?v=QY_4gl5b-Vw",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "composer": "Khalid Ibrahim",
+        "lyricist": "Khalid Ibrahim",
+        "arranger": "Muthana Al-Isa (مثنى العيسى)",
+        "mix_master": "Ahmed Abu Jad (احمد ابو جاد)"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "لماذا لا نحب (Why Don't We Love)",
+      "artist": "Mohannad (Instrumental)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Instrumental / Iraqi",
+      "roles": [
+        "Composer (تأليف موسيقي)",
+        "Producer (إنتاج)",
+        "Cellist (جيللو)"
+      ],
+      "exact_credit": "التأليف الموسيقي / مصطفى كمال / جيللو مصطفى كمال",
+      "source_url": "https://www.youtube.com/watch?v=_PhhtmhI1J4",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "violin": "Salah Khalil (صلاح خليل)",
+        "oud": "Haider Karim (حيدر كريم)",
+        "edit": "Aslan"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "Instrumental (Untitled)",
+      "artist": "Studio Baghdad",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Instrumental / Iraqi",
+      "roles": [
+        "Composer (ألحان)",
+        "Arranger (توزيع)",
+        "Producer (إنتاج)"
+      ],
+      "exact_credit": "ألحان: مصطفى كمال / توزيع: مصطفى كمال",
+      "source_url": "https://www.youtube.com/watch?v=bIGE-kDUh3M",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "mix_master": "Fahad (فهـــــهد)",
+        "violin": "Ahmed Abdul Jabbar (احمد عبد الجبار)",
+        "qanun": "Abdul Moneim (عبد المنعم)",
+        "ney": "Murad Naseer (مراد نصير)",
+        "oud": "Haider Karim (حيدر كريم)",
+        "graphics": "Omar Al-Mukhtar (عمر المختار)"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "من وحي بغداد (Inspired by Baghdad)",
+      "artist": "Studio Baghdad",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Instrumental / Iraqi",
+      "roles": [
+        "Sound Engineer (الهندسة الصوتية)",
+        "Producer (إنتاج)"
+      ],
+      "exact_credit": "الهندسة الصوتية مصطفى كمال / إنتاج ستوديو بغداد",
+      "source_url": "https://www.youtube.com/watch?v=7iwk_n7w1HA",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "oud": "Haider Karim (حيدر كريم)",
+        "edit": "Omar Al-Mukhtar (عمر المختار)"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "فاقد هواك (Missing You)",
+      "artist": "Ziyad Yousif (زياد يوسف)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic / Iraqi",
+      "roles": [
+        "Composer (ألحان)",
+        "Arranger (توزيع)",
+        "Producer (إنتاج)"
+      ],
+      "exact_credit": "ألحان: مصطفى كمال / توزيع: مصطفى كمال / إنتاج ستوديو بغداد",
+      "source_url": "https://www.youtube.com/watch?v=A_LarJSE8OQ",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "vocals": "Ziyad Yousif (زياد يوسف)",
+        "lyricist": "Ali Riyadh (علي رياض)",
+        "mix_master": "Fahad (فهـــــهد)",
+        "violin": "Ahmed Abdul Jabbar",
+        "qanun": "Abdul Moneim",
+        "ney": "Murad Naseer",
+        "oud": "Haider Karim",
+        "graphics": "Omar Al-Mukhtar",
+        "thanks": "Othman Abboud, Nasrat Al-Badr, Najdat Kamal, Mohanad Ghazi, Hosam Al-Din, Basem Adel"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "ابن حضني (My Lap Child)",
+      "artist": "Various",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic / Iraqi",
+      "roles": [
+        "Arranger (توزيع)",
+        "Mix Engineer (مكس)",
+        "Producer (إنتاج)"
+      ],
+      "exact_credit": "توزيع ومكس مصطفى كمال / إنتاج ستوديو بغداد",
+      "source_url": "https://www.youtube.com/watch?v=xH_l3-3gBxk",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "lyricist": "Yaser Raad (ياسر رعد)",
+        "composer": "Dr. Amir (الدكتور امير)",
+        "piano": "Sivan Sako (سيفان ساكو)",
+        "saxophone": "Batuhan Şallıel",
+        "bass_guitar": "Abo Aslan",
+        "thanks": "Naseem Jalal, Najdat Kamal, Studio Jan"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "لمات (Lamatt)",
+      "artist": "Khalid Ibrahim (خالد إبراهيم)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic / Iraqi",
+      "roles": [
+        "Arranger (توزيع)",
+        "Mix Engineer (مكس)",
+        "Producer (إنتاج)",
+        "Bass Guitarist (بيز كيتار)"
+      ],
+      "exact_credit": "توزيع ومكس مصطفى كمال / بيز كيتار مصطفى كمال / إنتاج ستوديو بغداد",
+      "source_url": "https://www.youtube.com/watch?v=Iwk6_lPfiZI",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "composer": "Dr. Amir (الدكتور امير)",
+        "piano": "Sivan Sako",
+        "saxophone": "Batuhan Şallıel",
+        "thanks": "Najdat Kamal, Naseem Jalal, Studio Jan Istanbul",
+        "artistic_supervision": "Nasrat Al-Badr (نصرت البدر)"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "Hasan Hail (حسن هايل)",
+      "artist": "Hasan Hail (حسن هايل)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic / Iraqi",
+      "roles": [
+        "Arranger (توزيع)",
+        "Mastering Engineer (ماستر)",
+        "Producer (إنتاج)"
+      ],
+      "exact_credit": "توزيع و ماستر مصطفى كمال / إنتاج مصطفى كمال ستوديو بغداد",
+      "source_url": "https://www.youtube.com/watch?v=yqWdgZkPoNo",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "composer": "Mahmoud Al-Ghiyath (محمود الغياث)",
+        "vocals": "Hasan Hail (حسن هايل)",
+        "solo": "Mohassad (محسد)",
+        "percussion": "Ihab Al-Khayyat (ايهاب الخياط)",
+        "oud": "Haider Karim (حيدر كريم)",
+        "management": "Nasrat Al-Badr, Mohanned Ghazi, Hassoun Al-Badr, Najdat Kamal"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "مهند صباح (Mohanad Sabah)",
+      "artist": "Mohanad Sabah (مهند صباح)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic / Iraqi",
+      "roles": [
+        "Mix Engineer (مكس)",
+        "Mastering Engineer (ماسترنك)",
+        "Producer (إنتاج)"
+      ],
+      "exact_credit": "مكس وماسترنك مصطفى كمال / إنتاج ستوديو بغداد @ مصطفى كمال",
+      "source_url": "https://www.youtube.com/watch?v=jSOyGEC3uQ4",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "composer": "Mohanad Sabah (مهند صباح)",
+        "arranger": "Essam Hikmat (عصام حكمت)",
+        "violin": "Osama Al-Bayati (اسامة البياتي)",
+        "qanun": "Abdul Moneim (عبدالمنعم)",
+        "oud": "Ahmed Salim (احمد سليم)",
+        "site_manager": "Hassoun Al-Badr",
+        "admin_supervision": "Nasrat Al-Badr"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "Adam Ayyad (آدم أياد)",
+      "artist": "Adam Ayyad (آدم أياد)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic / Iraqi",
+      "roles": [
+        "Mix Engineer (مكس)",
+        "Mastering Engineer (ماسترينغ)"
+      ],
+      "exact_credit": "مكس و ماسترينغ - مصطفى كمال",
+      "source_url": "https://www.youtube.com/watch?v=sIpvjFaETi4",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "composer": "Adam Ayyad (آدم أياد)",
+        "arranger": "Mohanad Ghazi (مهند غازي)",
+        "network_admin": "Hassouni Al-Badr (حسوني البدر)"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "Mirza Salem (ميرزا سالم)",
+      "artist": "Mirza Salem (ميرزا سالم)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic / Iraqi",
+      "roles": [
+        "Mix Engineer (مكس)",
+        "Mastering Engineer (ماستر)"
+      ],
+      "exact_credit": "مكس ماستر / مصطفى كمال / الإشراف العام مصطفى كمال",
+      "source_url": "https://www.youtube.com/watch?v=Kf0AXTxROLQ",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "composer": "Mirza Salem (ميرزا سالم)",
+        "arranger": "Mohanad Ghazi (مهند غازي)",
+        "director": "Ihab Al-Rikabi (ايهاب الركابي)",
+        "lighting": "Ahmed Al-Ward (احمد الورد)",
+        "edit": "Ali Jihad (علي جهاد)"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    },
+    {
+      "track": "Adam - أنت (You)",
+      "artist": "Adam (آدم)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic / Iraqi",
+      "roles": [
+        "Arranger (توزيع)",
+        "Mix Engineer (مكس)",
+        "Executive Producer (إشراف عام)"
+      ],
+      "exact_credit": "توزيع و مكس - مصطفى كمال / إشراف عام - مصطفى كمال",
+      "source_url": "https://www.youtube.com/watch?v=4iGHkcmwuCQ",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "lyricist": "Adam (آدم)",
+        "composer": "Mahmoud Al-Ghiyath (محمود الغياث)",
+        "recorded_at": "Nasrat Al-Badr Studios (ستوديوهات نصرت البدر)"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description (2 videos same)"
+    },
+    {
+      "track": "Adam Ayyad (duplicate credit)",
+      "artist": "Adam Ayyad (آدم أياد)",
+      "album": "Single",
+      "release_year": 2025,
+      "country": "Iraq/UAE",
+      "genre": "Arabic / Iraqi",
+      "roles": [
+        "Mix Engineer (مكس)",
+        "Mastering Engineer (ماسترينغ)"
+      ],
+      "exact_credit": "مكس و ماسترينغ - مصطفى كمال",
+      "source_url": "https://www.youtube.com/watch?v=6gd3GIhrCDg",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "composer": "Adam Ayyad",
+        "arranger": "Mohanad Ghazi",
+        "network_admin": "Hassouni Al-Badr"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Duplicate of sIpvjFaETi4"
+    },
+    {
+      "track": "انت احلى شي (Ant Ahla Shee)",
+      "artist": "Nasrat Al-Badr (نصرت البدر)",
+      "album": "Single",
+      "release_year": 2023,
+      "country": "Iraq/UAE",
+      "genre": "Arabic / Iraqi Pop",
+      "roles": [
+        "Arranger (توزيع)",
+        "Mix Engineer (مكس)",
+        "Executive Producer (إشراف عام)"
+      ],
+      "exact_credit": "توزيع و مكس - مصطفى كمال / إشراف عام - مصطفى كمال",
+      "source_url": "https://www.youtube.com/watch?v=rKdCOHl5Kas",
+      "platform": "YouTube (Studio Baghdad)",
+      "additional_credits": {
+        "lyricist": "Adam (آدم)",
+        "composer": "Mahmoud Al-Ghiyath (محمود الغياث)",
+        "recorded_at": "Nasrat Al-Badr Studios (ستوديوهات نصرت البدر)"
+      },
+      "confidence": 100,
+      "verification_status": "Verified - Direct YouTube description"
+    }
+  ],
+  "statistics": {
+    "total_verified_credits": 17,
+    "total_unique_tracks": 17,
+    "unique_artists": [
+      "Adam (آدم)",
+      "Saja Akram (سجى اكرم)",
+      "Nasrat Al-Badr (نصرت البدر)",
+      "Mohanad Sabah (مهند صباح)",
+      "Mirza Salem (ميرزا سالم)",
+      "Adam Ayyad (آدم أياد)",
+      "Various",
+      "Khalid Ibrahim (خالد إبراهيم)",
+      "Khalid Ibrahim (خالد ابراهيم)",
+      "Ziyad Yousif (زياد يوسف)",
+      "Mohannad (Instrumental)",
+      "Ali Rasheed (علي رشيد)",
+      "Studio Baghdad",
+      "Hasan Hail (حسن هايل)"
+    ],
+    "roles_breakdown": {
+      "Arranger (توزيع)": 10,
+      "Mix Engineer (مكس)": 11,
+      "Mastering Engineer (ماسترينغ)": 3,
+      "Composer (ألحان)": 4,
+      "Mastering Engineer (ماستر)": 3,
+      "Executive Producer (إشراف عام)": 3,
+      "Composer (تأليف موسيقي)": 1,
+      "Producer (إنتاج)": 8,
+      "Cellist (جيللو)": 1,
+      "Sound Engineer (الهندسة الصوتية)": 1,
+      "Bass Guitarist (بيز كيتار)": 1,
+      "Mastering Engineer (ماسترنك)": 1
+    },
+    "release_years": {
+      "2025": 16,
+      "2023": 1
+    },
+    "countries": {
+      "Iraq/UAE": 16
+    },
+    "genres": {
+      "Arabic/Iraqi Pop": 12,
+      "Instrumental/Iraqi": 4
+    }
+  },
+  "metadata_quality": {
+    "highest_confidence": 100,
+    "lowest_confidence": 100,
+    "average_confidence": 100,
+    "sources": [
+      "YouTube (Studio Baghdad channel video descriptions)"
+    ]
+  },
+  "notes": "All credits extracted from official YouTube video descriptions on the Studio Baghdad channel. Each credit line explicitly mentions Mustafa Kamal (مصطفى كمال) with his specific role. All videos were published in 2025 on the channel @StudioBaghdad (UCuH7V5r6858lIrtIs-8Ayww). Further research needed: Spotify credits, Apple Music metadata, Discogs entries, and pre-2025 works."
+}
