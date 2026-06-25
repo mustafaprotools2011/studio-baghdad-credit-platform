@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
 """
-MUSTAFA MIXING — OCR Credit Scanner v1.0
-Extracts text from YouTube video frames to discover "Mustafa Kamal" / "مصطفى كمال" credits.
+MUSTAFA MIXING — OCR Credit Scanner v2.0 (Windows/Linux)
+Scans YouTube videos for "Mustafa Kamal" / "مصطفى كمال" credits inside video frames.
 
 Usage:
-  1. First get a cookies.txt file from your browser (see instructions below)
-  2. Place video URLs in urls.txt (one per line) OR pass as argument
-  3. Run: python3 ocr_credit_scanner.py
-
-Cookies export instructions:
-  - Chrome: Install "Get cookies.txt LOCALLY" extension
-  - Firefox: Install "cookies.txt" extension
-  - Export cookies for youtube.com, save as cookies.txt
+  python ocr_credit_scanner.py --channel ShababTV
+  python ocr_credit_scanner.py --url https://youtube.com/watch?v=xxx
+  python ocr_credit_scanner.py --urls-file urls.txt
 """
 
 import argparse
@@ -20,362 +15,208 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 
-# Check if yt-dlp is available
-def check_dependencies():
-    """Check all required tools are available."""
+__version__ = "2.0"
+
+def check_deps():
     missing = []
-    
-    # Check yt-dlp
     try:
         subprocess.run(["yt-dlp", "--version"], capture_output=True, text=True)
     except FileNotFoundError:
-        missing.append("yt-dlp (install: pip install yt-dlp)")
-    
-    # Check EasyOCR
+        missing.append("yt-dlp (pip install yt-dlp)")
     try:
-        import easyocr
+        import easyocr, cv2
     except ImportError:
-        missing.append("easyocr (install: pip install easyocr)")
-    
+        missing.append("easyocr + opencv (pip install easyocr opencv-python)")
     if missing:
-        print("❌ Missing dependencies:")
-        for m in missing:
-            print(f"   - {m}")
-        print("\nInstall with: pip install yt-dlp easyocr pillow")
+        print("❌ Missing:", ", ".join(missing))
+        print("   pip install yt-dlp easyocr opencv-python pillow torch torchvision --index-url https://download.pytorch.org/whl/cu121")
         return False
-    
-    # Check cookies.txt
-    if not os.path.exists("cookies.txt"):
-        print("⚠️  No cookies.txt found. Videos may be blocked.")
-        print("   Export cookies from your browser and save as cookies.txt")
-        print("   Instructions: youtube.com → export cookies → save as cookies.txt")
-    
     return True
 
+def build_yt_cmd(video_url, cookies="cookies.txt"):
+    cmd = ["yt-dlp"]
+    if os.path.exists(cookies):
+        cmd += ["--cookies", cookies]
+    cmd += [video_url]
+    return cmd
 
-def extract_frames_from_youtube(video_url, output_dir, num_frames=5, cookies_file="cookies.txt"):
-    """
-    Download key frames from a YouTube video using yt-dlp + ffmpeg.
-    
-    Strategy: Extract frames from the last 30 seconds (where credits usually appear).
-    """
-    import easyocr
-    
-    video_id = video_url.split("v=")[-1].split("&")[0] if "v=" in video_url else video_url.split("/")[-1]
-    
-    # First get video info
-    cmd = ["yt-dlp", "--print", "%(duration)s", video_url]
-    if os.path.exists(cookies_file):
-        cmd = ["yt-dlp", "--cookies", cookies_file, "--print", "%(duration)s", video_url]
-    
+def get_video_duration(video_url):
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        duration = float(result.stdout.strip())
+        r = subprocess.run(build_yt_cmd(video_url) + ["--print", "%(duration)s", "--skip-download"],
+                          capture_output=True, text=True, timeout=15)
+        return int(float(r.stdout.strip()))
     except:
-        print(f"⚠️  Could not get duration for {video_id}, assuming 240s")
-        duration = 240
-    
-    print(f"   Duration: {duration:.0f}s")
-    
-    # Extract frames from last 30s (or last 15% for short videos)
-    extract_duration = min(30, duration * 0.15)
-    start_time = max(0, duration - extract_duration)
-    
-    output_pattern = os.path.join(output_dir, f"{video_id}_frame_%03d.png")
-    
-    # Download frame sequence from the credits section
-    cmd = [
-        "yt-dlp", 
-        "--cookies", cookies_file,
-        "--download-sections", f"*{start_time}-{duration}",
-        "--force-keyframes-at-cuts",
-        "--downloader", "ffmpeg",
-        "-o", output_pattern,
-        "--write-thumbnail",
-        "--skip-download",
-        video_url
-    ] if os.path.exists(cookies_file) else [
-        "yt-dlp",
-        "--download-sections", f"*{start_time}-{duration}",
-        "--force-keyframes-at-cuts",
-        "--downloader", "ffmpeg",
-        "-o", output_pattern,
-        "--write-thumbnail",
-        "--skip-download",
-        video_url
-    ]
-    
-    print(f"   Extracting frames ({start_time:.0f}s → {duration:.0f}s)...")
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-    
-    frames = sorted(glob(os.path.join(output_dir, f"{video_id}_frame_*.png")))
-    thumbs = sorted(glob(os.path.join(output_dir, f"{video_id}*.webp")) + glob(os.path.join(output_dir, f"{video_id}*.jpg")))
-    
-    all_images = frames + thumbs
-    print(f"   Got {len(all_images)} images to analyze")
-    return all_images
+        return None
 
+def download_outro(video_url, out_dir, cookies="cookies.txt"):
+    """Download last 8 seconds of video for credit OCR."""
+    vid = video_url.split("v=")[-1].split("&")[0] if "v=" in video_url else video_url.split("/")[-1][:11]
+    duration = get_video_duration(video_url)
+    if not duration or duration < 15:
+        return None, vid
+    start = max(0, duration - 10)
+    out_path = os.path.join(out_dir, f"{vid}_outro.mp4")
+    r = subprocess.run(
+        build_yt_cmd(video_url) + [
+            "--download-sections", f"*{start}-{duration}",
+            "--force-keyframes-at-cuts", "-f", "worst[ext=mp4]", "-o", out_path
+        ], capture_output=True, text=True, timeout=40)
+    if os.path.exists(out_path) and os.path.getsize(out_path) > 1000:
+        return out_path, vid
+    return None, vid
 
-def extract_frames_ffmpeg(video_url, output_dir, num_frames=8):
-    """
-    Alternative: Use ffmpeg directly on a downloaded video segment.
-    First download a small segment containing the outro/credits.
-    """
-    video_id = video_url.split("v=")[-1].split("&")[0] if "v=" in video_url else video_url.split("/")[-1]
-    
-    # Try to get the video info first
-    cmd = ["yt-dlp", "--cookies", "cookies.txt", "--print", "%(duration)s", video_url]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        duration = float(result.stdout.strip())
-    except:
-        print(f"   ⚠️  Could not get duration, trying without cookies...")
-        try:
-            # Try to use yt-dlp's internal extractor with iOS client
-            cmd = ["yt-dlp", 
-                   "--extractor-args", "youtube:player_client=ios",
-                   "--print", "%(duration)s", video_url]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-            duration = float(result.stdout.strip())
-        except:
-            print(f"   ⚠️  Could not get duration at all")
-            return []
-    
-    print(f"   Duration: {duration:.0f}s")
-    
-    # Download only last 20 seconds of video at low quality (fast download)
-    extract_start = max(0, duration - 20)
-    temp_video = os.path.join(output_dir, f"{video_id}_temp.mp4")
-    
-    cmd = [
-        "yt-dlp",
-        "--cookies", "cookies.txt",
-        "-f", "worst[ext=mp4]",
-        "--download-sections", f"*{extract_start}-{duration}",
-        "--force-keyframes-at-cuts",
-        "-o", temp_video,
-        video_url
-    ]
-    
-    print(f"   Downloading last 20s (low quality)...")
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        
-        if os.path.exists(temp_video) and os.path.getsize(temp_video) > 1000:
-            print(f"   Downloaded: {os.path.getsize(temp_video)//1024}KB")
-            
-            # Extract frames with ffmpeg
-            frame_pattern = os.path.join(output_dir, f"{video_id}_fr_%03d.png")
-            cmd2 = [
-                "ffmpeg", "-i", temp_video,
-                "-vf", f"fps=1/{20//num_frames}",
-                "-frames:v", str(num_frames),
-                "-q:v", "2",
-                frame_pattern,
-                "-y"
-            ]
-            subprocess.run(cmd2, capture_output=True, text=True, timeout=30)
-            
-            # Clean up temp video
-            os.remove(temp_video)
-            
-            frames = sorted(glob(os.path.join(output_dir, f"{video_id}_fr_*.png")))
-            print(f"   Extracted {len(frames)} frames")
-            return frames
-    except Exception as e:
-        print(f"   ⚠️  Error: {e}")
-        # Clean up
-        if os.path.exists(temp_video):
-            os.remove(temp_video)
-    
-    return []
+def extract_frame(video_path, output_dir, vid):
+    frame_path = os.path.join(output_dir, f"{vid}_frame.png")
+    subprocess.run(["ffmpeg", "-i", video_path, "-vf", "select=eq(n\\,0)", "-vsync", "vfr",
+                    "-q:v", "2", frame_path, "-y"], capture_output=True, text=True, timeout=10)
+    if os.path.exists(frame_path):
+        return frame_path
+    return None
 
-
-def ocr_analysis(reader, image_paths, known_names):
-    """
-    Run OCR on all extracted images, looking for known names.
-    Returns detected matches.
-    """
-    matches = []
-    all_text = ""
+def scan_video(video_url, reader, output_dir, cookies="cookies.txt"):
+    """Full pipeline: download outro → extract frame → OCR → cleanup."""
+    print(f"  📥 Downloading outro...", end=" ", flush=True)
+    video_path, vid = download_outro(video_url, output_dir, cookies)
+    if not video_path:
+        print("❌ failed")
+        return None
     
-    for img_path in image_paths:
-        if not os.path.exists(img_path) or os.path.getsize(img_path) < 100:
-            continue
-        
-        try:
-            # Run EasyOCR
-            results = reader.readtext(img_path)
-            
-            text_found = " | ".join([r[1] for r in results])
-            all_text += text_found + "\n"
-            
-            # Check for name matches
-            for (bbox, text, confidence) in results:
-                text_clean = text.strip()
-                
-                for name in known_names:
-                    if name.lower() in text_clean.lower():
-                        matches.append({
-                            "image": os.path.basename(img_path),
-                            "text": text_clean,
-                            "confidence": float(confidence),
-                            "matched_name": name
-                        })
-                        print(f"      ✅ MATCH! '{text_clean}' (conf: {confidence:.2f})")
-            
-            # Print all text for manual review
-            print(f"      Text: {text_found[:200]}")
-            
-        except Exception as e:
-            print(f"      ⚠️  OCR error on {os.path.basename(img_path)}: {e}")
+    print(f"📸 Extracting frame...", end=" ", flush=True)
+    frame_path = extract_frame(video_path, output_dir, vid)
+    if not frame_path:
+        print("❌ no frame")
+        return None
     
-    return matches, all_text
-
-
-def search_channel_videos(channel_url, max_videos=50):
-    """Get list of video URLs from a YouTube channel."""
-    cmd = [
-        "yt-dlp",
-        "--cookies", "cookies.txt",
-        "--flat-playlist",
-        "--print", "%(id)s",
-        "--playlist-end", str(max_videos),
-        channel_url
-    ]
+    print(f"🔍 OCR...", end=" ", flush=True)
+    results = reader.readtext(frame_path)
+    texts = [r[1] for r in results]
     
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-        video_ids = [v.strip() for v in result.stdout.strip().split("\n") if v.strip()]
-        print(f"   Found {len(video_ids)} videos from channel")
-        return [f"https://www.youtube.com/watch?v={vid}" for vid in video_ids]
-    except Exception as e:
-        print(f"   ⚠️  Error fetching channel: {e}")
-        return []
+    # Cleanup
+    for f in [video_path, frame_path]:
+        try: os.remove(f)
+        except: pass
+    
+    print(f"done ({len(texts)} text items)")
+    return {"video_id": vid, "text_found": texts, "raw_results": [(r[1], float(r[2])) for r in results]}
 
+def search_channel_url(channel_name):
+    """Resolve @channel_name to a working YouTube URL."""
+    # Try direct @
+    url = f"https://www.youtube.com/@{channel_name}"
+    r = subprocess.run(["yt-dlp", "--flat-playlist", "--print", "%(id)s", 
+                        "--playlist-end", "1", url], capture_output=True, text=True, timeout=15)
+    if r.returncode == 0 and r.stdout.strip():
+        return url
+    # Try /c/
+    url = f"https://www.youtube.com/c/{channel_name}"
+    r = subprocess.run(["yt-dlp", "--flat-playlist", "--print", "%(id)s", 
+                        "--playlist-end", "1", url], capture_output=True, text=True, timeout=15)
+    if r.returncode == 0 and r.stdout.strip():
+        return url
+    return None
 
-def glob(pattern):
-    import glob as g
-    return g.glob(pattern)
-
+def get_channel_videos(channel_url, max_videos=50):
+    r = subprocess.run(
+        ["yt-dlp", "--flat-playlist", "--print", "%(id)s", "--playlist-end", str(max_videos), channel_url],
+        capture_output=True, text=True, timeout=60)
+    ids = [v.strip() for v in r.stdout.strip().split("\n") if v.strip()]
+    return [f"https://www.youtube.com/watch?v={vid}" for vid in ids]
 
 def main():
-    parser = argparse.ArgumentParser(description="MUSTAFA MIXING OCR Credit Scanner")
-    parser.add_argument("--url", "-u", help="Single video URL to scan")
-    parser.add_argument("--channel", "-c", help="Channel URL to scan (e.g., @AlRemas)")
-    parser.add_argument("--urls-file", "-f", help="File with video URLs (one per line)")
-    parser.add_argument("--output", "-o", default="ocr_results", help="Output directory")
-    parser.add_argument("--names", "-n", default="Mustafa Kamal,مصطفى كمال", 
+    parser = argparse.ArgumentParser(description="MUSTAFA MIXING OCR Scanner")
+    parser.add_argument("--url", "-u", help="Single video URL")
+    parser.add_argument("--channel", "-c", help="Channel name or @handle")
+    parser.add_argument("--urls-file", "-f", help="File with URLs (one per line)")
+    parser.add_argument("--output", "-o", default="ocr_results", help="Output folder")
+    parser.add_argument("--max-videos", type=int, default=50)
+    parser.add_argument("--cookies", default="cookies.txt", help="Cookies file path")
+    parser.add_argument("--names", default="Mustafa Kamal,مصطفى كمال,مهندس صوت,مكس,ماستر",
                         help="Comma-separated names to search for")
-    parser.add_argument("--max-videos", type=int, default=20, 
-                        help="Max videos to scan from a channel")
-    
     args = parser.parse_args()
+    
+    if not check_deps():
+        sys.exit(1)
     
     known_names = [n.strip() for n in args.names.split(",")]
     
-    # Setup
-    check_dependencies()
+    print(f"🚀 MUSTAFA MIXING OCR Scanner v{__version__}")
+    print(f"   GPU: {'✅ AVAILABLE' if __import__('torch').cuda.is_available() else '❌ CPU only'}")
     
+    import easycv2 as cv2
     import easyocr
-    print("🚀 Initializing EasyOCR (Arabic + English)...")
-    reader = easyocr.Reader(["ar", "en"], gpu=False)
-    print("✅ OCR Ready!")
+    gpu = __import__('torch').cuda.is_available()
+    reader = easyocr.Reader(["ar", "en"], gpu=gpu)
+    print(f"   OCR: Ready ({'GPU' if gpu else 'CPU'})")
     
-    output_dir = Path(args.output)
-    output_dir.mkdir(exist_ok=True)
+    out_dir = Path(args.output)
+    out_dir.mkdir(exist_ok=True)
     
-    # Collect video URLs
+    # Collect URLs
     urls = []
     if args.url:
         urls.append(args.url)
     if args.urls_file:
         with open(args.urls_file) as f:
-            urls.extend([line.strip() for line in f if line.strip()])
+            urls.extend([l.strip() for l in f if l.strip()])
     if args.channel:
-        channel_url = args.channel
-        if not channel_url.startswith("http"):
-            channel_url = f"https://www.youtube.com/@{channel_url}"
-        print(f"\n📺 Scanning channel: {channel_url}")
-        channel_videos = search_channel_videos(channel_url, args.max_videos)
-        urls.extend(channel_videos)
+        print(f"\n📺 Resolving channel: @{args.channel}")
+        ch_url = search_channel_url(args.channel)
+        if not ch_url:
+            print(f"   ❌ Could not find channel @{args.channel}")
+            sys.exit(1)
+        print(f"   ✅ Found: {ch_url}")
+        urls.extend(get_channel_videos(ch_url, args.max_videos))
     
     if not urls:
-        print("❌ No URLs provided. Use --url, --channel, or --urls-file")
-        print("\nExample:")
-        print("  python3 ocr_credit_scanner.py --channel AlRemas")
-        print("  python3 ocr_credit_scanner.py --url https://youtube.com/watch?v=xxx")
-        print("  python3 ocr_credit_scanner.py --urls-file urls.txt")
+        print("❌ No URLs. Use --url, --channel, or --urls-file")
         sys.exit(1)
     
     print(f"\n🎯 Scanning {len(urls)} videos for: {', '.join(known_names)}")
     print("="*60)
     
     all_matches = []
-    
     for i, url in enumerate(urls, 1):
-        print(f"\n[{i}/{len(urls)}] Processing: {url[:60]}...")
-        
-        # Extract frames
-        frames = extract_frames_ffmpeg(url, str(output_dir))
-        
-        if not frames:
-            print("   ⚠️  Could not extract frames, trying thumbnails...")
-            # Try just the thumbnail
-            thumb = os.path.join(str(output_dir), f"thumb_{url.split('v=')[-1][:11]}.jpg")
-            cmd = ["yt-dlp", "--cookies", "cookies.txt", "--write-thumbnail", 
-                   "-o", thumb.replace(".jpg", ""), "--skip-download", "--convert-thumbnails", "jpg", url]
-            subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        print(f"\n[{i}/{len(urls)}] {url[:60]}...")
+        result = scan_video(url, reader, str(out_dir), args.cookies)
+        if result:
+            text_all = " | ".join(result["text_found"])
+            print(f"   Text: {text_all[:200]}")
             
-            frames = sorted(glob(str(output_dir) + f"/thumb_{url.split('v=')[-1][:11]}*.jpg"))
-            if frames:
-                print(f"   Got {len(frames)} thumbnails")
-            else:
-                print("   ❌ No frames available for this video")
-                continue
-        
-        # OCR analysis
-        matches, all_text = ocr_analysis(reader, frames, known_names)
-        
-        if matches:
-            all_matches.append({
-                "url": url,
-                "video_id": url.split("v=")[-1].split("&")[0] if "v=" in url else url.split("/")[-1],
-                "matches": matches,
-                "all_text": all_text[:500]
-            })
-        
-        # Small delay to avoid rate limiting
-        time.sleep(1)
+            matched = []
+            for t in result["text_found"]:
+                for name in known_names:
+                    if name.lower() in t.lower() or t.lower() in name.lower():
+                        matched.append({"text": t, "matched": name})
+                        print(f"   ✅✅ MATCH! '{t}' → '{name}'")
+            
+            if matched:
+                all_matches.append({
+                    "video_id": result["video_id"],
+                    "url": url,
+                    "matches": matched,
+                    "all_text": text_all[:500]
+                })
+        time.sleep(1)  # Rate limit
     
-    # Results
+    # Final report
     print("\n" + "="*60)
-    print(f"📊 SCAN COMPLETE: {len(urls)} videos, {len(all_matches)} matches found")
-    print("="*60)
-    
+    print(f"📊 DONE: {len(urls)} videos, {len(all_matches)} matches")
     if all_matches:
         for m in all_matches:
-            print(f"\n🎬 {m['url']}")
+            print(f"\n  🎬 {m['url']}")
             for match in m['matches']:
-                print(f"   ✅ {match['text']} (confidence: {match['confidence']:.2f})")
+                print(f"     ✅ {match['text']} → {match['matched']}")
     else:
-        print("❌ No matching credits found.")
+        print("\n  ❌ No matches found this run")
     
-    # Save results
-    results_file = output_dir / "scan_results.json"
-    with open(results_file, "w", encoding="utf-8") as f:
-        json.dump({
-            "scanned_urls": len(urls),
-            "matches_found": len(all_matches),
-            "known_names": known_names,
-            "results": all_matches
-        }, f, ensure_ascii=False, indent=2)
-    print(f"\n📁 Results saved to: {results_file}")
-
+    report = {"version": __version__, "videos_scanned": len(urls), "matches": all_matches,
+              "names_searched": known_names, "gpu": gpu}
+    with open(out_dir / "scan_report.json", "w", encoding="utf-8") as f:
+        json.dump(report, f, ensure_ascii=False, indent=2)
+    print(f"\n📁 Report: {(out_dir / 'scan_report.json').resolve()}")
 
 if __name__ == "__main__":
     main()
