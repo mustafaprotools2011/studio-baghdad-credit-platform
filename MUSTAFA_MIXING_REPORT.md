@@ -1,157 +1,54 @@
-# MUSTAFA MIXING — تقرير البحث الشامل
-## Global Music Credits & Rights Intelligence — Initial Massive Search Report
-### 25 يونيو 2026
+# MUSTAFA MIXING — Global Music Credits & Rights Intelligence Agent
+# Status Report — 25 June 2026
 
----
+## ✅ Infrastructure (Complete)
+- yt-dlp 2026.06.09 with Node.js JS runtime ✅
+- YouTube cookies.txt (authenticated) ✅
+- EasyOCR (Arabic + English), torch 2.12.1 ✅
+- Flask Dashboard on localhost:5000 ✅
+- SQLite database (19 credits) ✅
 
-## 📊 ملخص عام
+## 📺 Channels Scanned
 
-| البند | العدد |
-|-------|-------|
-| إجمالي الأعمال الموثقة | **17** |
-| الفنانين المتعاونين | **13** فنان |
-| سنين الإصدار | **2023، 2025** |
-| الأدوار المختلفة | **12** دور |
-| الثقة | **100%** (كلها موثقة من أوصاف يوتيوب) |
+| Channel | Videos | Status |
+|---------|--------|--------|
+| MCP TV Music | 34 (2010-2014) | 📋 Queue ready |
+| ShababTV | 50 (2021-2026) | 📋 Queue ready |
+| AlHaneen | 3 (Dabkeh) | 📋 Queue ready |
+| Music AlRemas | OCR scanned (0 matches for hm-OZGH6aoY) | ✅ Done |
 
----
+## 🎵 Artists to Investigate
+Based on user input:
+- حسام الرسام (Hussam Alrassam) — 80 videos scanned, 0 found in descriptions
+- نور الزين (Noor Alzain) — pending
+- زيد الحبيب (Zaid Alhabeeb) — in MCP list ✓
+- قائد حلمي (Qaid Helmi) — in MCP list ✓
+- فضل شاكر (Fadel Shaker) — pending
 
-## 🎤 جميع الأعمال الموثقة
+## 🔍 OCR Pipeline
+Full HD video → 185 keyframes → EasyOCR scan
+- Time: ~15s per frame (CPU) / ~47 min for full video
+- Smart scan (55 frames): ~12 min
+- Found text in intro: "نور الزين | زيد الحبيب", "RAFAT ALBADER" — but no "مصطفى كمال" in outro
+- Resolution limitation: small Arabic text at 360p/480p not readable
 
-### علي رشيد — Ali Rasheed
-| # | الأغنية | السنة | الأدوار | الرابط |
-|---|---------|-------|---------|--------|
-| 1 | حققت حلمي (Haqqet Helmi) | 2025 | توزيع، ميكس، ماسترينغ | [YouTube](https://www.youtube.com/watch?v=XIeeoG22wrA) |
-| 2 | الغباء العاطفي | 2025 | ألحان، توزيع، مكس | [YouTube](https://www.youtube.com/watch?v=9qgVosIcKSk) |
+## ⚠️ Bottleneck
+YouTube cookies expire periodically. Need browser re-export every few days.
+Video descriptions rarely contain engineer credits — must use OCR on video frames.
 
-### سجى اكرم — Saja Akram
-| # | الأغنية | السنة | الأدوار | الرابط |
-|---|---------|-------|---------|--------|
-| 3 | كافي انصدم | 2025 | ألحان، توزيع، مكس، ماستر | [YouTube](https://www.youtube.com/watch?v=Eya8hNahj8o) |
+## 📁 Files
+- `mustafa_mixing.db` — SQLite (19 credits)
+- `credits_database.json` — JSON backup
+- `scan_queues/mcp_videos.txt` — 34 MCP videos
+- `scan_queues/shababtv_videos.txt` — 50 ShababTV videos
+- `scan_queues/alhaneen_videos.txt` — 3 AlHaneen videos
+- `ocr_credit_scanner.py` — Full OCR pipeline script
+- `cookies.txt` — YouTube auth cookies (sensitive!)
+- `app.py` — Flask dashboard on :5000
 
-### خالد إبراهيم — Khalid Ibrahim
-| # | الأغنية | السنة | الأدوار | الرابط |
-|---|---------|-------|---------|--------|
-| 4 | يلا ننسى الهم | 2025 | إشراف عام | [YouTube](https://www.youtube.com/watch?v=QY_4gl5b-Vw) |
-| 5 | لمات (Lamatt) | 2025 | توزيع، مكس، بيز كيتار | [YouTube](https://www.youtube.com/watch?v=Iwk6_lPfiZI) |
-
-### نصرت البدر — Nasrat Al-Badr ⭐ **(مكتشف حديثاً)**
-| # | الأغنية | السنة | الأدوار | الرابط |
-|---|---------|-------|---------|--------|
-| 6 | انت احلى شي (Ant Ahla Shee) | **2023** | توزيع، مكس، إشراف عام | [YouTube](https://www.youtube.com/watch?v=rKdCOHl5Kas) |
-
-### زياد يوسف — Ziyad Yousif
-| # | الأغنية | السنة | الأدوار | الرابط |
-|---|---------|-------|---------|--------|
-| 7 | فاقد هواك | 2025 | ألحان، توزيع، إنتاج | [YouTube](https://www.youtube.com/watch?v=A_LarJSE8OQ) |
-
-### حسن هايل — Hasan Hail
-| # | الأغنية | السنة | الأدوار | الرابط |
-|---|---------|-------|---------|--------|
-| 8 | (بدون عنوان) | 2025 | توزيع، ماستر، إنتاج | [YouTube](https://www.youtube.com/watch?v=yqWdgZkPoNo) |
-
-### مهند صباح — Mohanad Sabah
-| # | الأغنية | السنة | الأدوار | الرابط |
-|---|---------|-------|---------|--------|
-| 9 | (بدون عنوان) | 2025 | مكس، ماستر، إنتاج | [YouTube](https://www.youtube.com/watch?v=jSOyGEC3uQ4) |
-
-### ميرزا سالم — Mirza Salem
-| # | الأغنية | السنة | الأدوار | الرابط |
-|---|---------|-------|---------|--------|
-| 10 | (بدون عنوان) | 2025 | مكس، ماستر، إشراف عام | [YouTube](https://www.youtube.com/watch?v=Kf0AXTxROLQ) |
-
-### آدم أياد — Adam Ayyad
-| # | الأغنية | السنة | الأدوار | الرابط |
-|---|---------|-------|---------|--------|
-| 11-12 | من كد ماملامح | 2025 | مكس، ماسترينغ | [YouTube](https://www.youtube.com/watch?v=sIpvjFaETi4) |
-| 13 | أنت | 2025 | توزيع، مكس، إشراف عام | [YouTube](https://www.youtube.com/watch?v=4iGHkcmwuCQ) |
-
-### أعمال آلية / موسيقى تصويرية
-| # | الأغنية | السنة | الأدوار | الرابط |
-|---|---------|-------|---------|--------|
-| 14 | لماذا لا نحب | 2025 | تأليف موسيقي، جيللو | [YouTube](https://www.youtube.com/watch?v=_PhhtmhI1J4) |
-| 15 | Instrumental (بدون عنوان) | 2025 | ألحان، توزيع | [YouTube](https://www.youtube.com/watch?v=bIGE-kDUh3M) |
-| 16 | من وحي بغداد | 2025 | هندسة صوتية | [YouTube](https://www.youtube.com/watch?v=7iwk_n7w1HA) |
-| 17 | ابن حضني | 2025 | توزيع، مكس | [YouTube](https://www.youtube.com/watch?v=xH_l3-3gBxk) |
-
----
-
-## 🔄 توزيع الأدوار
-
-```
-مكساج (Mix)          ████████████████████  12
-توزيع (Arrange)      ███████████████████   11
-ماسترينغ (Master)    ██████████████        8
-إنتاج (Produce)      ██████████████        8
-ألحان (Compose)      ████████████          7
-إشراف عام (Exec Prod)█████                 3
-هندسة صوتية           ██                    1
-تشيلو                 ██                    1
-بيز كيتار             ██                    1
-```
-
----
-
-## 👥 شبكة المتعاونين
-
-```
-                    ┌─────────────┐
-                    │  نصرت البدر  │◄── استوديوهات التسجيل
-                    └──────┬──────┘
-                           │
-    ┌──────────┐    ┌──────┴──────┐    ┌──────────┐
-    │  حيدر كريم│◄──┤  مصطفى كمال ├──►│  مهند غازي│
-    │  (عود)    │    │ (مهندس صوت) │    │ (توزيع)   │
-    └──────────┘    └──────┬──────┘    └──────────┘
-                           │
-    ┌──────────┐    ┌──────┴──────┐    ┌──────────┐
-    │  فهـهد   │◄──┤             ├──►│نجدت كمال │
-    │(مكس/ماستر)│   │             │    │ (دعم)     │
-    └──────────┘    └──────┬──────┘    └──────────┘
-                           │
-              ┌────────────┼────────────┐
-              │            │            │
-         علي رشيد     سجى اكرم    خالد إبراهيم
-         زياد يوسف    حسن هايل    ميرزا سالم
-         مهند صباح    آدم أياد
-```
-
----
-
-## ⚠️ معيقات البحث (ما زال يحتاج)
-
-| المجال | المشكلة | الحل المقترح |
-|--------|---------|--------------|
-| **YouTube ما قبل 2023** | تم حظر السيرش من يوتيوب | نحتاج OAuth token للبحث في الوصف |
-| **Spotify** | ممنوع بدون توكن API | أحتاج تفويض Spotify API |
-| **Anghami** | موقع ديناميكي (JavaScript) | أحتاج متصفح أو API |
-| **Discogs** | ماكو حساب API | أقدر أسوي account ببلاش |
-| **Facebook/Instagram** | ماكو API key | تحتاج Business account |
-| **SoundBetter** | ما لقيت البروفايل | نحتاج نبحث بالاسم الرباعي |
-
-للأسف معظم قواعد البيانات العالمية (Spotify, Apple Music, Anghami)挡住了 السيرش لأنها تحتاج API keys أو متصفح (والكروم مو مثبت على السيرفر).
-
----
-
-## 📁 قاعدة البيانات
-
-الملف: `/opt/data/mustafa-mixing-archive/credits_database.json`
-- الإصدار: v1.1.0
-- 17 عمل موثق
-- 13 فنان
-- سنتين إصدار (2023, 2025)
-- كلها بثقة 100%
-
----
-
-## 💡 الخطوات الجاية (اقتراح)
-
-1. **أركب كرون جوب** يراقب قناة ستوديو بغداد أسبوعياً عشان يكتشف الإصدارات الجديدة
-2. **أحتاج منك** تعطيني تفويض يوتيوب (OAuth) عشان أقدر أقرأ أوصاف كل الفيديوهات القديمة
-3. **لو عندك حساب Spotify** أو Apple Music Artist، ممكن ندخل نبحث بالـ API
-4. **أقدر أعمل** Skill ثابت لهذا البحث عشان نكرره في المستقبل
-5. **أقدر أضيف** الـ 17 عمل في قاعدة بيانات Discogs كأول أرشيف عام لأعمالك
-
----
-
-تسلم دكتور، إذا تحب أتابع في أي اتجاه من اللي فوق أو عندك تفاصيل إضافية — أنا حاضر 👍
+## 📋 Next Steps
+1. Get user's hard drive data (track list)
+2. OCR scan critical videos from ShababTV & MCP
+3. Add all verified credits to database
+4. Weekly report generation
+5. Complete camera-ready report (ocr_temp/full_hd.mp4)

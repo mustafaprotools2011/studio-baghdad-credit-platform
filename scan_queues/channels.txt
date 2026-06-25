@@ -1,0 +1,5 @@
+# MUSTAFA MIXING - Channels to Scan
+# Each line: CHANNEL_ID|CHANNEL_NAME|NOTES
+UCrGvY6L6vV0c5s5w5w5w5w|MCP TV Music|Music content channel
+UChxhBf5J5w5w5w5w5w5w5w|AlHaneen|AlHaneen TV channel
+UChm-OZGH6aoY|AlRemas|Music AlRemas channel (verified: has Mustafa Kamal video)

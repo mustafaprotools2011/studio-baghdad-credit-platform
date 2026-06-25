@@ -3,3 +3,4 @@ mustafa_mixing.db
 __pycache__/
 backups/*.json
 exports/*.json
+cookies.txt
