@@ -9,7 +9,7 @@ from flask import Flask, render_template_string, request, jsonify, Response
 from markupsafe import Markup
 from flask_cors import CORS
 
-BASE = "/opt/data/mustafa-mixing-archive"
+BASE = os.environ.get("MUSTAFA_MIXING_BASE", os.path.dirname(os.path.abspath(__file__)))
 BANNER = r'''
  _____ ___ _____ _____ _____ _   _ _____ ___  _   _  __  __   _
 |     |  _|     |     |  _  | | | |   __|_  |/ \ | |/  \|  \ | |
@@ -23,6 +23,23 @@ BANNER = r'''
 '''
 
 DB_PATH = os.path.join(BASE, "mustafa_mixing.db")
+
+# ─── Auto-migration: create/upgrade DB on first startup ──────────
+if not os.path.exists(DB_PATH):
+    print("📦 Database not found. Running upgrade_db to initialize schema...")
+    try:
+        from upgrade_db import main as upgrade_main
+        # Patch the upgrade script's paths to match ours
+        import upgrade_db as _upd_mod
+        _upd_mod.BASE = BASE
+        _upd_mod.DB_PATH = DB_PATH
+        upgrade_main()
+        print("✅ Database initialized.")
+    except Exception as e:
+        print(f"⚠️ Auto-migration failed: {e}")
+        print("   You can run: python upgrade_db.py manually.")
+# ────────────────────────────────────────────────────────────────
+
 app = Flask(__name__)
 app.secret_key = os.urandom(16).hex()
 app.jinja_env.autoescape = False
