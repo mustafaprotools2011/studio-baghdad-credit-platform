@@ -15,8 +15,8 @@ ocr_temp/
 backups/
 exports/
 
-# Static copies (redundant)
-static/
+# Static copies (keep style.css in git — needed for runtime)
+static/*.bak
 
 # Virtual env
 .venv/

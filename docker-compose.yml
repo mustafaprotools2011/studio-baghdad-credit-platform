@@ -1,0 +1,58 @@
+# MUSTAFA MIXING — Docker Compose
+# ================================
+# Run:    docker compose up -d
+# Stop:   docker compose down
+# Logs:   docker compose logs -f
+# Backup: docker compose exec app python upgrade_db.py
+
+services:
+  app:
+    build: .
+    container_name: mustafa-mixing
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persist SQLite database outside container
+      - mustafa_mixing_data:/app/mustafa_mixing.db
+      # Persist backup files
+      - mustafa_mixing_backups:/app/backups
+      # Static files (served by Flask)
+      - ./static:/app/static:ro
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - mustafa_network
+
+  # Optional: cron container for periodic credit search
+  # Uncomment to enable automated credit discovery
+  # cron:
+  #   build: .
+  #   container_name: mustafa-mixing-cron
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - app
+  #   volumes:
+  #     - mustafa_mixing_data:/app/mustafa_mixing.db
+  #   environment:
+  #     - CRON_SCHEDULE=0 */8 * * *
+  #   command: python -c "import time; time.sleep(999999)"
+  #   networks:
+  #     - mustafa_network
+
+networks:
+  mustafa_network:
+    driver: bridge
+
+volumes:
+  mustafa_mixing_data:
+    driver: local
+  mustafa_mixing_backups:
+    driver: local

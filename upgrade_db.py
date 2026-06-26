@@ -242,33 +242,32 @@ def create_backup(conn):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = os.path.join(backup_dir, f"pre_upgrade_v2.1_{timestamp}.json")
 
-    # Export tracks with full data
-    rows = conn.execute("""
+    # Export tracks with full data (single query, reuse cursor description)
+    cur = conn.execute("""
         SELECT t.*, a.name as artist_name
         FROM tracks t
         JOIN artists a ON t.artist_id = a.id
         ORDER BY t.id
-    """).fetchall()
-    columns = [desc[0] for desc in conn.execute("""
-        SELECT t.*, a.name as artist_name
-        FROM tracks t
-        JOIN artists a ON t.artist_id = a.id
-        ORDER BY t.id
-    """).description]
+    """)
+    columns = [desc[0] for desc in cur.description]
+    rows = cur.fetchall()
+
+    artists = [dict(row) for row in conn.execute("SELECT * FROM artists ORDER BY id").fetchall()]
 
     data = {
         "archive": "MUSTAFA MIXING - Pre-Upgrade Backup v2.1",
         "backup_date": timestamp,
         "tracks": [dict(zip(columns, row)) for row in rows],
-        "artists": [dict(row) for row in conn.execute("SELECT * FROM artists ORDER BY id").fetchall()],
+        "artists": artists,
     }
 
-    with open(backup_path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    json_bytes = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
 
-    with open(backup_path, 'rb') as f:
-        md5 = hashlib.md5(f.read()).hexdigest()
-    size = os.path.getsize(backup_path)
+    with open(backup_path, 'wb') as f:
+        f.write(json_bytes)
+
+    md5 = hashlib.md5(json_bytes).hexdigest()
+    size = len(json_bytes)
 
     conn.execute("""
         INSERT INTO backups (backup_type, file_path, record_count, size_bytes, md5_hash)
