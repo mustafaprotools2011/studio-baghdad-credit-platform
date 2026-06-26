@@ -1,6 +1,22 @@
-mustafa_mixing.db
-*.pyc
-__pycache__/
-backups/*.json
-exports/*.json
+# Sensitive files
 cookies.txt
+.env
+*.db
+*.tar.gz
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OCR temp files
+ocr_temp/
+
+# Backups & exports
+backups/
+exports/
+
+# Static copies (redundant)
+static/
+
+# Virtual env
+.venv/

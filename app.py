@@ -4,13 +4,28 @@ MUSTAFA MIXING — Web Dashboard v2.0
 Flask web app — 13 pages, SQLite-backed, single source of truth.
 """
 
-import os, sqlite3
-from flask import Flask, render_template_string, request
+import os, json, sqlite3
+from flask import Flask, render_template_string, request, jsonify, Response
+from flask_cors import CORS
 
 BASE = "/opt/data/mustafa-mixing-archive"
+BANNER = r'''
+ _____ ___ _____ _____ _____ _   _ _____ ___  _   _  __  __   _
+|     |  _|     |     |  _  | | | |   __|_  |/ \ | |/  \|  \ | |
+| | | |  _| | | | | | |     | |_| |   __| __| | | |     | | \| |
+|_|_|_|_| |_|_|_|_|_|_|__|__|_____|_____|___|_| \_|_|_|_|_|\___|
+  ____ ___ ____   ___  ____  _____   _   _ _____ ____
+ / ___|_ _|  _ \ / _ \|  _ \| ____| | \ | | ____|  _ \
+| |    | || |_) | | | | |_) |  _|   |  \| |  _| | |_) |
+| |___ | ||  _ <| |_| |  _ <| |___  | |\  | |___|  _ <
+ \____|___|_| \_\\___/|_| \_\_____| |_| \_|_____|_| \_\
+'''
+
 DB_PATH = os.path.join(BASE, "mustafa_mixing.db")
 app = Flask(__name__)
 app.secret_key = os.urandom(16).hex()
+# CORS: allow Vue.js frontend from any origin
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -126,6 +141,279 @@ def page(title, subtitle, content, page_name):
     return render_template_string(LAYOUT, t=title, st=subtitle, c=content, nav=nav_item)
 
 # ─── ROUTES ─────────────────────────────────────────────────────────
+
+# ─── API helpers ─────────────────────────────────────────────────────
+
+def api_response(data, status=200):
+    """Return JSON response with optional pretty-print support."""
+    pretty = request.args.get("pretty", "").lower() in ("1", "true", "yes")
+    indent = 2 if pretty else None
+    json_str = json.dumps(data, ensure_ascii=False, indent=indent, default=str)
+    return Response(
+        json_str + "\n",
+        status=status,
+        mimetype="application/json",
+        headers={"Access-Control-Allow-Origin": "*"}
+    )
+
+def api_error(message, status=400):
+    return api_response({"error": True, "message": message}, status)
+
+# ─── API endpoints ──────────────────────────────────────────────────
+
+@app.route("/api/credits")
+def api_credits():
+    """GET /api/credits — return all active credits as JSON."""
+    limit = request.args.get("limit", 0, type=int)
+    offset = request.args.get("offset", 0, type=int)
+    sql = """
+        SELECT t.*, a.name as artist_name, a.name_arabic as artist_name_arabic
+        FROM tracks t
+        JOIN artists a ON t.artist_id = a.id
+        WHERE t.is_active = 1
+        ORDER BY t.release_year DESC, t.title
+    """
+    if limit:
+        sql += " LIMIT ? OFFSET ?"
+        rows = query(sql, (limit, offset))
+    else:
+        rows = query(sql)
+    return api_response({
+        "count": len(rows),
+        "results": rows
+    })
+
+@app.route("/api/credits/<int:id>")
+def api_credit_detail(id):
+    """GET /api/credits/<id> — return a single credit by ID."""
+    row = q1("""
+        SELECT t.*, a.name as artist_name, a.name_arabic as artist_name_arabic
+        FROM tracks t
+        JOIN artists a ON t.artist_id = a.id
+        WHERE t.id = ?
+    """, (id,))
+    if not row:
+        return api_error("Credit not found", 404)
+    # Get additional data
+    roles = query("SELECT * FROM roles WHERE track_id=?", (id,))
+    collabs = query("SELECT * FROM collaborators WHERE track_id=?", (id,))
+    row["roles"] = roles
+    row["collaborators"] = collabs
+    return api_response(row)
+
+@app.route("/api/stats")
+def api_stats():
+    """GET /api/stats — return summary statistics."""
+    s = q1("""
+        SELECT
+            COUNT(*) as total_credits,
+            COUNT(DISTINCT artist_id) as total_artists,
+            COALESCE(SUM(role_mixing), 0) as mixing,
+            COALESCE(SUM(role_mastering), 0) as mastering,
+            COALESCE(SUM(role_arranging), 0) as arranging,
+            COALESCE(SUM(role_composing), 0) as composing,
+            COALESCE(SUM(role_producing), 0) as producing,
+            COALESCE(SUM(role_sound_engineer), 0) as sound_engineer,
+            COALESCE(SUM(role_executive_prod), 0) as executive_production,
+            MIN(release_year) as year_min,
+            MAX(release_year) as year_max,
+            COUNT(CASE WHEN confidence_level='Verified' THEN 1 END) as verified,
+            COUNT(CASE WHEN confidence_level='Likely' THEN 1 END) as likely,
+            COUNT(CASE WHEN confidence_level='Possible' THEN 1 END) as possible,
+            COUNT(CASE WHEN confidence_level='Rejected' THEN 1 END) as rejected
+        FROM tracks WHERE is_active=1
+    """)
+    years = query("""
+        SELECT release_year, COUNT(*) as count
+        FROM tracks WHERE is_active=1
+        GROUP BY release_year ORDER BY release_year
+    """)
+    platforms = query("""
+        SELECT platform, COUNT(*) as count
+        FROM tracks WHERE is_active=1 AND platform IS NOT NULL AND platform != ''
+        GROUP BY platform ORDER BY count DESC
+    """)
+    confidence_dist = query("""
+        SELECT confidence_level, COUNT(*) as count
+        FROM tracks WHERE is_active=1
+        GROUP BY confidence_level ORDER BY count DESC
+    """)
+    return api_response({
+        "summary": s,
+        "by_year": years,
+        "by_platform": platforms,
+        "by_confidence": confidence_dist
+    })
+
+@app.route("/api/search")
+def api_search():
+    """GET /api/search?q= — search credits by keyword."""
+    q = request.args.get("q", "").strip()
+    if not q:
+        return api_response({"query": "", "count": 0, "results": []})
+    p = "%{}%".format(q)
+    results = query("""
+        SELECT t.*, a.name as artist_name, a.name_arabic as artist_name_arabic
+        FROM tracks t
+        JOIN artists a ON t.artist_id = a.id
+        WHERE t.is_active=1
+          AND (t.title LIKE ? OR a.name LIKE ? OR t.genre LIKE ? OR t.platform LIKE ?
+               OR t.country LIKE ? OR t.exact_credit LIKE ? OR t.label LIKE ? OR t.isrc LIKE ?)
+        ORDER BY t.release_year DESC
+        LIMIT 100
+    """, [p] * 8)
+    return api_response({
+        "query": q,
+        "count": len(results),
+        "results": results
+    })
+
+@app.route("/api/docs")
+def api_docs():
+    """GET /api/docs — HTML documentation page for the API."""
+    html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MUSTAFA MIXING — API Documentation</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a28;--border:#2a2a3e;--text:#e8e8f0;--text2:#8888aa;--accent:#f5a623;--accent2:#e8961a;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--purple:#8b5cf6}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);padding:32px;max-width:900px;margin:0 auto}
+h1{font-size:24px;color:var(--accent);margin-bottom:4px}
+h2{font-size:18px;color:var(--text);margin:28px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+h3{font-size:14px;color:var(--accent2);margin:16px 0 6px}
+p{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px}
+code{background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--green);border:1px solid var(--border)}
+pre{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px;overflow-x:auto;font-size:12px;line-height:1.5;margin:8px 0 16px}
+pre code{background:transparent;border:none;padding:0;color:var(--text)}
+.endpoint{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px}
+.endpoint .method{display:inline-block;padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px;margin-right:8px;vertical-align:middle}
+.method-get{background:var(--blue);color:#fff}
+.method-post{background:var(--green);color:#000}
+.method-delete{background:var(--red);color:#fff}
+.endpoint .path{font-family:monospace;font-size:14px;color:var(--text);vertical-align:middle}
+.endpoint .desc{color:var(--text2);font-size:12px;margin-top:6px}
+.param-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.param-table th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text2);font-size:11px}
+.param-table td{padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text)}
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;margin:0 4px}
+.tag-required{background:var(--red);color:#fff}
+.tag-optional{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+a{color:var(--accent)}
+a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<h1>MUSTAFA MIXING API</h1>
+<p>RESTful JSON API for the Mustafa Kamal Credits Intelligence Platform.</p>
+<p>Base URL: <code>/api</code> &nbsp;|&nbsp; Pretty-print: append <code>?pretty=1</code> to any endpoint</p>
+
+<h2>Endpoints</h2>
+
+<div class="endpoint">
+  <span class="method method-get">GET</span><span class="path">/api/credits</span>
+  <div class="desc">Return all active credits as a JSON array.</div>
+  <table class="param-table">
+    <tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td><code>limit</code></td><td><span class="tag tag-optional">optional</span></td><td><em>all</em></td><td>Max results to return</td></tr>
+    <tr><td><code>offset</code></td><td><span class="tag tag-optional">optional</span></td><td>0</td><td>Offset for pagination</td></tr>
+    <tr><td><code>pretty</code></td><td><span class="tag tag-optional">optional</span></td><td>0</td><td>Pretty-print JSON (1/true/yes)</td></tr>
+  </table>
+</div>
+
+<div class="endpoint">
+  <span class="method method-get">GET</span><span class="path">/api/credits/{id}</span>
+  <div class="desc">Return a single credit by its ID, including roles and collaborators.</div>
+  <table class="param-table">
+    <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+    <tr><td><code>id</code></td><td><span class="tag tag-required">required</span></td><td>Numeric track/credit ID</td></tr>
+  </table>
+</div>
+
+<div class="endpoint">
+  <span class="method method-get">GET</span><span class="path">/api/stats</span>
+  <div class="desc">Return summary statistics: total counts, breakdowns by role, year, platform, and confidence level.</div>
+</div>
+
+<div class="endpoint">
+  <span class="method method-get">GET</span><span class="path">/api/search?q=keyword</span>
+  <div class="desc">Full-text search across tracks, artists, genres, platforms, countries, credits, labels, and ISRCs.</div>
+  <table class="param-table">
+    <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+    <tr><td><code>q</code></td><td><span class="tag tag-required">required</span></td><td>Search keyword</td></tr>
+  </table>
+</div>
+
+<h2>Usage Examples</h2>
+
+<h3>cURL</h3>
+<pre><code># Get all credits
+curl http://localhost:5000/api/credits
+
+# Get a single credit
+curl http://localhost:5000/api/credits/1
+
+# Get stats
+curl http://localhost:5000/api/stats
+
+# Search
+curl 'http://localhost:5000/api/search?q=Mustafa'
+
+# Pretty-print
+curl 'http://localhost:5000/api/credits?pretty=1'</code></pre>
+
+<h3>JavaScript (fetch)</h3>
+<pre><code>// All credits
+const res = await fetch('/api/credits');
+const data = await res.json();
+console.log(data.count, 'results');
+
+// Single credit
+const credit = await (await fetch('/api/credits/1')).json();
+
+// Search
+const results = await (await fetch('/api/search?q=Khalid')).json();
+
+// Paginated
+const page = await (await fetch('/api/credits?limit=10&offset=0')).json();</code></pre>
+
+<h3>Response Format</h3>
+<pre><code>{
+  "count": 19,
+  "results": [
+    {
+      "id": 1,
+      "title": "...",
+      "artist_name": "...",
+      "release_year": 2024,
+      "role_mixing": 1,
+      "role_mastering": 1,
+      ...
+    }
+  ]
+}</code></pre>
+
+<h2>CORS</h2>
+<p>All <code>/api/*</code> endpoints include <code>Access-Control-Allow-Origin: *</code> headers, making them accessible from any Vue.js frontend or browser-based application.</p>
+
+<h2>Error Handling</h2>
+<p>Errors return:</p>
+<pre><code>{
+  "error": true,
+  "message": "Description of what went wrong"
+}</code></pre>
+<p>HTTP status codes: <code>400</code> (bad request), <code>404</code> (not found).</p>
+
+<hr style="border:none;border-top:1px solid var(--border);margin:24px 0">
+<p style="font-size:11px;color:var(--text2)">
+  MUSTAFA MIXING — Credits Intelligence Platform &nbsp;|&nbsp; <a href="/">Back to Dashboard</a>
+</p>
+</body>
+</html>"""
+    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
+
 
 @app.route("/")
 def overview():

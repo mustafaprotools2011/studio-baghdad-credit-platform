@@ -1,0 +1,7 @@
+# MUSTAFA MIXING — OCR Scanner
+# قائمة URLs للمسح (سطر لكل رابط)
+# الأسطر التي تبدأ بـ # هي تعليقات
+
+# مثال:
+# https://www.youtube.com/watch?v=dQw4w9WgXcQ
+# https://youtu.be/xxxxxxxxxxx
