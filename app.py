@@ -4,8 +4,9 @@ MUSTAFA MIXING — Web Dashboard v2.0
 Flask web app — 13 pages, SQLite-backed, single source of truth.
 """
 
-import os, json, sqlite3
+import os, json, sqlite3, jinja2
 from flask import Flask, render_template_string, request, jsonify, Response
+from markupsafe import Markup
 from flask_cors import CORS
 
 BASE = "/opt/data/mustafa-mixing-archive"
@@ -24,6 +25,7 @@ BANNER = r'''
 DB_PATH = os.path.join(BASE, "mustafa_mixing.db")
 app = Flask(__name__)
 app.secret_key = os.urandom(16).hex()
+app.jinja_env.autoescape = False
 # CORS: allow Vue.js frontend from any origin
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
@@ -52,93 +54,83 @@ def bl(lvl):
     return '<span class="badge badge-{}">{}</span>'.format(lvl, lvl)
 
 LAYOUT = '''<!DOCTYPE html>
-<html lang=en>
+<html lang=ar dir=rtl>
 <head>
 <meta charset=UTF-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>MUSTAFA MIXING — {{ t }}</title>
-<style>
-{% raw %}*{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a28;--border:#2a2a3e;--text:#e8e8f0;--text2:#8888aa;--accent:#f5a623;--accent2:#e8961a;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--purple:#8b5cf6}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
-.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);padding:20px 0;flex-shrink:0;overflow-y:auto}
-.sidebar h1{font-size:13px;padding:0 20px 16px;border-bottom:1px solid var(--border);margin-bottom:8px;color:var(--accent);letter-spacing:1px}
-.sidebar h1 small{display:block;font-size:10px;color:var(--text2);margin-top:3px;letter-spacing:0}
-.nav-item{display:block;padding:8px 20px;color:var(--text2);text-decoration:none;font-size:13px;transition:.15s;border-left:3px solid transparent}
-.nav-item:hover,.nav-item.active{color:var(--text);background:var(--bg3)}
-.nav-item.active{border-left-color:var(--accent);color:var(--accent)}
-.nav-section{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text2);padding:16px 20px 4px;opacity:.6}
-.main{flex:1;padding:24px 32px;overflow-x:hidden}
-.page-title{font-size:22px;margin-bottom:4px}
-.page-subtitle{color:var(--text2);font-size:13px;margin-bottom:24px}
-.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
-.badge-Verified{background:#22c55e22;color:var(--green);border:1px solid #22c55e44}
-.badge-Likely{background:#3b82f622;color:var(--blue);border:1px solid #3b82f644}
-.badge-Possible{background:#f5a62322;color:var(--accent);border:1px solid #f5a62344}
-.badge-Rejected{background:#ef444422;color:var(--red);border:1px solid #ef44444b}
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:20px}
-.card h3{font-size:12px;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
-.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px}
-.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px}
-.stat-card .value{font-size:26px;font-weight:700;color:var(--accent)}
-.stat-card .label{font-size:11px;color:var(--text2);margin-top:3px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
-td{padding:8px 10px;border-bottom:1px solid var(--border)}
-tr:hover td{background:var(--bg3)}
-a{color:var(--accent);text-decoration:none}
-a:hover{text-decoration:underline}
-.search-box{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
-.search-box input,.search-box select{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:6px;font-size:13px}
-.search-box input[type=text]{flex:1;min-width:200px}
-.search-box button{background:var(--accent);color:#000;border:none;padding:8px 20px;border-radius:6px;font-weight:600;cursor:pointer}
-.role-pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:var(--bg3);border:1px solid var(--border);margin:2px}
-.role-mix{border-color:#3b82f666;color:#60a5fa}
-.role-master{border-color:#8b5cf666;color:#a78bfa}
-.role-arrange{border-color:#22c55e66;color:#4ade80}
-.role-compose{border-color:#f5a62366;color:#fbbf24}
-.role-produce{border-color:#ef444466;color:#f87171}
-.info-row{display:flex;margin-bottom:6px}
-.info-label{width:180px;color:var(--text2);font-size:12px;flex-shrink:0}
-.info-value{font-size:13px}
-.table-wrap{overflow-x:auto}
-.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-{% endraw %}
-</style>
+<link rel=stylesheet href=/static/style.css>
 </head>
 <body>
+{% autoescape false %}
+<div class=bg-pattern><div class="orb orb1"></div><div class="orb orb2"></div></div>
 <nav class=sidebar>
-<h1>MUSTAFA MIXING<small>Credits Intelligence Platform</small></h1>
+<div class=sidebar-logo>
+<span class=logo-icon>🎵</span>
+<h1>MUSTAFA MIXING</h1>
+<small>Credits Intelligence</small>
+<div class=gold-line></div>
+</div>
 <div class=nav-section>Core</div>
-{{ nav("overview","📊 Overview") }}
-{{ nav("artists","🎤 Artists") }}
-{{ nav("tracks","🎵 Tracks") }}
-{{ nav("albums","💿 Albums") }}
-{{ nav("credits","📝 Credits") }}
+{{ nav_overview|safe }}
+{{ nav_artists|safe }}
+{{ nav_tracks|safe }}
+{{ nav_albums|safe }}
+{{ nav_credits|safe }}
 <div class=nav-section>Intelligence</div>
-{{ nav("search","🔍 Search") }}
-{{ nav("statistics","📈 Statistics") }}
-{{ nav("reports","📋 Reports") }}
-{{ nav("verification","✅ Verification") }}
-{{ nav("legal","⚖️ Legal") }}
-{{ nav("royalties","💰 Royalties") }}
+{{ nav_search|safe }}
+{{ nav_statistics|safe }}
+{{ nav_reports|safe }}
+{{ nav_verification|safe }}
+{{ nav_legal|safe }}
+{{ nav_royalties|safe }}
 <div class=nav-section>System</div>
-{{ nav("evidence","📁 Evidence") }}
-{{ nav("settings","⚙️ Settings") }}
+{{ nav_evidence|safe }}
+{{ nav_settings|safe }}
 </nav>
 <div class=main>
+<div class=page-header>
 <h1 class=page-title>{{ t }}</h1>
 <p class=page-subtitle>{{ st }}</p>
+</div>
 {{ c }}
 </div>
+{% endautoescape %}
 </body>
 </html>'''
 
 def page(title, subtitle, content, page_name):
-    def nav_item(p, label):
+    navs = {}
+    items = [
+        ("overview", "Overview", "📊"), ("artists", "Artists", "🎤"),
+        ("tracks", "Tracks", "🎵"), ("albums", "Albums", "💿"),
+        ("credits", "Credits", "📝"), ("search", "Search", "🔍"),
+        ("statistics", "Statistics", "📈"), ("reports", "Reports", "📋"),
+        ("verification", "Verification", "✅"), ("legal", "Legal", "⚖️"),
+        ("royalties", "Royalties", "💰"), ("evidence", "Evidence", "📁"),
+        ("settings", "Settings", "⚙️")
+    ]
+    for p, label, icon in items:
         act = ' active' if p == page_name else ''
-        return '<a href="/{}" class="nav-item{}">{}</a>'.format(p, act, label)
-    return render_template_string(LAYOUT, t=title, st=subtitle, c=content, nav=nav_item)
+        navs["nav_" + p] = '<a href="/{}" class="nav-item{}"><span class=nav-icon>{}</span> {}</a>'.format(p, act, icon, label)
+    html = '<!DOCTYPE html>\n<html lang=ar dir=rtl>\n<head>\n<meta charset=UTF-8>\n<meta name=viewport content="width=device-width,initial-scale=1">\n<title>MUSTAFA MIXING — {}</title>\n<link rel=stylesheet href=/static/style.css>\n</head>\n<body>'.format(title)
+    html += '<div class=bg-pattern><div class="orb orb1"></div><div class="orb orb2"></div></div>'
+    html += '<nav class=sidebar>'
+    html += '<div class=sidebar-logo><span class=logo-icon>🎵</span><h1>MUSTAFA MIXING</h1><small>Credits Intelligence</small><div class=gold-line></div></div>'
+    html += '<div class=nav-section>Core</div>'
+    for p, label, icon in items[:5]:
+        act = ' active' if p == page_name else ''
+        html += '<a href="/{}" class="nav-item{}" data-icon="{}">{}</a>'.format(p, act, icon, label)
+    html += '<div class=nav-section>Intelligence</div>'
+    for p, label, icon in items[5:11]:
+        act = ' active' if p == page_name else ''
+        html += '<a href="/{}" class="nav-item{}" data-icon="{}">{}</a>'.format(p, act, icon, label)
+    html += '<div class=nav-section>System</div>'
+    for p, label, icon in items[11:]:
+        act = ' active' if p == page_name else ''
+        html += '<a href="/{}" class="nav-item{}" data-icon="{}">{}</a>'.format(p, act, icon, label)
+    html += '</nav><div class=main><div class=page-header><h1 class=page-title>{}</h1><p class=page-subtitle>{}</p></div>{}</div></body></html>'.format(title, subtitle, content)
+    return Response(Markup(html), mimetype="text/html")
 
 # ─── ROUTES ─────────────────────────────────────────────────────────
 

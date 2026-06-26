@@ -266,7 +266,8 @@ def create_backup(conn):
     with open(backup_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-    md5 = hashlib.md5(open(backup_path, 'rb').read()).hexdigest()
+    with open(backup_path, 'rb') as f:
+        md5 = hashlib.md5(f.read()).hexdigest()
     size = os.path.getsize(backup_path)
 
     conn.execute("""
