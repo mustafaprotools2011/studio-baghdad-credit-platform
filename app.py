@@ -186,6 +186,8 @@ def page(title, subtitle, content, page_name):
         ("statistics", "Statistics", "📈"), ("reports", "Reports", "📋"),
         ("verification", "Verification", "✅"), ("legal", "Legal", "⚖️"),
         ("royalties", "Royalties", "💰"), ("evidence", "Evidence", "📁"),
+        ("upload-image", "Upload OCR", "📤"),
+        ("add-credit", "➕ Add Credit", "➕"),
         ("settings", "Settings", "⚙️")
     ]
     for p, label, icon in items:
@@ -615,6 +617,146 @@ def reports():
     rows = ''.join('<tr><td>{}</td><td>{}</td><td>{}</td></tr>'.format(x['report_type'],x['title'],x['created_at']) for x in r) or '<tr><td colspan=3 style=color:var(--text2)>No reports yet</td></tr>'
     return page("Reports", "{} reports".format(len(r)), '<div class=card><div class=table-wrap><table><tr><th>Type</th><th>Title</th><th>Date</th></tr>{}</table></div></div>'.format(rows), "reports")
 
+@app.route("/upload-image", methods=["GET", "POST"])
+def upload_image():
+    import base64, io, re
+    from PIL import Image
+    result_html = ""
+    if request.method == "POST":
+        file = request.files.get("image")
+        if file and file.filename:
+            from datetime import datetime
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            fname = f"upload_{ts}_{file.filename}"
+            save_dir = os.path.join(BASE, "evidence", "uploads")
+            os.makedirs(save_dir, exist_ok=True)
+            save_path = os.path.join(save_dir, fname)
+            file.save(save_path)
+            # Basic image info
+            img = Image.open(save_path)
+            info = f"<p>📐 Size: {img.size[0]}×{img.size[1]} | Mode: {img.mode} | Format: {img.format}</p>"
+            info += f'<p>💾 File: {fname} ({os.path.getsize(save_path)} bytes)</p>'
+            # Try OCR with pytesseract if available
+            try:
+                import pytesseract
+                text = pytesseract.image_to_string(img, lang='ara+eng')
+                text_clean = text.strip() if text.strip() else "⚠️ No text detected"
+                result_html = f'<div class=card><h3>📖 Extracted Text</h3><pre style="white-space:pre-wrap;background:var(--bg2);padding:1rem;border-radius:8px;direction:ltr;text-align:left;max-height:400px;overflow:auto">{text_clean}</pre></div>'
+                info = ""  # Replace info with OCR result
+            except ImportError:
+                result_html = f'<div class=card><h3>📷 Image Saved</h3><p>OCR not installed. File saved at: <code>{save_path}</code></p><p>Install: <code>pip install pytesseract</code> + system tesseract</p></div>'
+            result_html = info + result_html
+            result_html += f'<div class=card><h3>🖼️ Preview</h3><img src="/evidence/uploads/{fname}" style="max-width:100%;max-height:500px;border-radius:8px"></div>'
+    html = '''
+    <div class=card>
+        <h3>📤 Upload Image for OCR</h3>
+        <form method=POST enctype=multipart/form-data>
+            <input type=file name=image accept="image/*" required style="margin:1rem 0;padding:0.5rem;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px">
+            <br>
+            <button type=submit class=btn>🔍 Analyze Image</button>
+        </form>
+    </div>
+    ''' + result_html
+    return page("Upload Image", "Extract text from images", html, "upload-image")
+
+@app.route("/evidence/uploads/<path:fname>")
+def evidence_uploads(fname):
+    from flask import send_from_directory
+    return send_from_directory(os.path.join(BASE, "evidence", "uploads"), fname)
+
+
+# ─── API: إضافة كريديت جديد ────────────────────────────────────────────
+@app.route("/api/credits/add", methods=["POST"])
+def api_add_credit():
+    try:
+        data = request.get_json()
+        track = data.get("track", "").strip()
+        artist = data.get("artist", "").strip()
+        if not track or not artist:
+            return jsonify({"error": "Track and artist are required"}), 400
+
+        cur = get_db().execute(
+            "INSERT INTO tracks (title, artist, release_year, role, confidence, is_active) VALUES (?, ?, ?, ?, ?, 1)",
+            (track, artist, data.get("year", None), data.get("role", "Mix"), data.get("confidence", "Verified"))
+        )
+        get_db().commit()
+        return jsonify({"id": cur.lastrowid, "message": "✅ تمت الإضافة"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── صفحة إضافة كريديت ──────────────────────────────────────────────────
+@app.route("/add-credit")
+def add_credit():
+    html = """
+    <div class=card>
+        <h3>➕ إضافة كريديت جديد</h3>
+        <form id=creditForm style="display:flex;flex-direction:column;gap:12px;max-width:500px">
+            <input id=track name=track placeholder="اسم الأغنية (مطلوب)" required
+                   style="padding:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px">
+            <input id=artist name=artist placeholder="اسم الفنان (مطلوب)" required
+                   style="padding:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px">
+            <input id=year name=year type=number placeholder="سنة الإصدار (مثال: 2025)"
+                   style="padding:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px">
+            <select id=role name=role
+                    style="padding:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px">
+                <option value="">-- اختر الدور --</option>
+                <option value="Mix">🎛️ Mix Engineer</option>
+                <option value="Master">🎚️ Mastering Engineer</option>
+                <option value="Arr">🎼 Arranger</option>
+                <option value="Compose">✍️ Composer</option>
+                <option value="Produce">🎬 Producer</option>
+                <option value="Engineer">🎧 Recording Engineer</option>
+                <option value="Mix,Master">🎛️ Mix + Master</option>
+                <option value="Mix,Arr">🎛️ Mix + Arranger</option>
+            </select>
+            <select id=confidence name=confidence
+                    style="padding:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px">
+                <option value="Verified">✅ Verified</option>
+                <option value="Likely">🔵 Likely</option>
+                <option value="Possible">🟡 Possible</option>
+            </select>
+            <button type=submit class=btn style="padding:12px;background:var(--gold);color:#000;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer">
+                💾 حفظ الكريديت
+            </button>
+        </form>
+        <div id=result style="margin-top:12px"></div>
+    </div>
+    <script>
+    document.getElementById('creditForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button');
+        btn.textContent = '⏳ جاري الحفظ...';
+        btn.disabled = true;
+        try {
+            const r = await fetch('/api/credits/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    track: document.getElementById('track').value,
+                    artist: document.getElementById('artist').value,
+                    year: document.getElementById('year').value || null,
+                    role: document.getElementById('role').value || 'Mix',
+                    confidence: document.getElementById('confidence').value
+                })
+            });
+            const d = await r.json();
+            if (r.ok) {
+                document.getElementById('result').innerHTML = '<div style="padding:12px;background:rgba(34,197,94,.12);border-radius:8px;color:var(--green)">✅ تم الحفظ!</div>';
+                this.reset();
+            } else {
+                document.getElementById('result').innerHTML = '<div style="padding:12px;background:rgba(239,68,68,.12);border-radius:8px;color:var(--red)">❌ ' + d.error + '</div>';
+            }
+        } catch(e) {
+            document.getElementById('result').innerHTML = '<div style="padding:12px;background:rgba(239,68,68,.12);border-radius:8px;color:var(--red)">❌ خطأ في الاتصال</div>';
+        }
+        btn.textContent = '💾 حفظ الكريديت';
+        btn.disabled = false;
+    };
+    </script>
+    """
+    return page("Add Credit", "إضافة كريديت جديد", html, "add-credit")
+
 @app.route("/settings")
 def settings():
     dbc = q1("SELECT COUNT(*) as c FROM sqlite_master WHERE type='table'")['c']
@@ -625,7 +767,58 @@ def settings():
     return page("Settings", "System configuration", html, "settings")
 
 if __name__ == "__main__":
-    cnt = q1("SELECT COUNT(*) as c FROM tracks WHERE is_active=1")['c']
+    # ─── إنشاء الجداول تلقائياً إذا ما موجودة ─────────────────────
+    try:
+        q1("SELECT COUNT(*) as c FROM tracks WHERE is_active=1")
+    except Exception:
+        print("📦 Initializing database tables...")
+        conn = get_db()
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS tracks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                artist TEXT,
+                album TEXT DEFAULT '',
+                release_year INTEGER,
+                role TEXT DEFAULT 'Mix',
+                confidence TEXT DEFAULT 'Verified',
+                is_active INTEGER DEFAULT 1,
+                source_url TEXT DEFAULT '',
+                platform TEXT DEFAULT '',
+                notes TEXT DEFAULT '',
+                country TEXT DEFAULT '',
+                isrc TEXT DEFAULT '',
+                upc TEXT DEFAULT '',
+                label TEXT DEFAULT '',
+                publisher TEXT DEFAULT '',
+                copyright_owner TEXT DEFAULT '',
+                master_owner TEXT DEFAULT '',
+                composer TEXT DEFAULT '',
+                lyricist TEXT DEFAULT '',
+                arranger TEXT DEFAULT '',
+                producer TEXT DEFAULT '',
+                recording_engineer TEXT DEFAULT '',
+                mix_engineer TEXT DEFAULT '',
+                mastering_engineer TEXT DEFAULT '',
+                duration TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS backups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                filename TEXT,
+                record_count INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        conn.commit()
+        conn.close()
+        print("✅ Tables created.")
+    cnt = 0
+    try:
+        cnt = q1("SELECT COUNT(*) as c FROM tracks WHERE is_active=1")['c']
+    except Exception:
+        cnt = 0
     port = int(os.environ.get("PORT", 5000))
     print("="*50)
     print("MUSTAFA MIXING Dashboard v2.0")
