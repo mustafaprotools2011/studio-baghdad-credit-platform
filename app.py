@@ -760,7 +760,77 @@ def add_credit():
 
 @app.route("/advanced-search")
 def advanced_search():
-    return render_template("advanced_search.html")
+    return render_template("search.html")
+
+
+@app.route("/api/advanced-search")
+def api_advanced_search():
+    """API للبحث المتقدم - ثنائي اللغة مع دعم المنصات"""
+    try:
+        name_ar = request.args.get("artistNameAr", "").strip()
+        name_en = request.args.get("artistNameEn", "").strip()
+        prof_ar = request.args.get("professionAr", "").strip()
+        prof_en = request.args.get("professionEn", "").strip()
+        platforms = request.args.getlist("platforms")
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("perPage", 10, type=int)
+
+        where = ["t.is_active=1"]
+        params = []
+
+        if name_ar:
+            where.append("(t.title_arabic LIKE ? OR a.name_arabic LIKE ?)")
+            like = f"%{name_ar}%"
+            params.extend([like, like])
+        if name_en:
+            where.append("(t.title LIKE ? OR a.name LIKE ? OR t.exact_credit LIKE ?)")
+            like = f"%{name_en}%"
+            params.extend([like, like, like])
+        if prof_ar:
+            where.append("(t.mustafa_role LIKE ? OR t.notes LIKE ?)")
+            like = f"%{prof_ar}%"
+            params.extend([like, like])
+        if prof_en:
+            where.append("(t.mustafa_role LIKE ? OR t.exact_credit LIKE ?)")
+            like = f"%{prof_en}%"
+            params.extend([like, like])
+        valid_plats = [p for p in platforms if p and p != "all"]
+        if valid_plats:
+            ph = ",".join("?" for _ in valid_plats)
+            where.append(f"t.platform IN ({ph})")
+            params.extend(valid_plats)
+
+        offset = (page - 1) * per_page
+        sql = "SELECT t.*, a.name as artist, a.name_arabic as artist_ar FROM tracks t LEFT JOIN artists a ON t.artist_id=a.id WHERE " + " AND ".join(where) + " ORDER BY t.release_year DESC LIMIT ? OFFSET ?"
+        params.extend([per_page, offset])
+        results = query(sql, params)
+
+        return jsonify({
+            "success": True,
+            "data": results,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": len(results)
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/platforms")
+def get_platforms():
+    """قائمة جميع المنصات المتاحة"""
+    platforms_list = [
+        {"id": "youtube", "name": "YouTube", "icon": "🎥"},
+        {"id": "spotify", "name": "Spotify", "icon": "🎵"},
+        {"id": "apple-music", "name": "Apple Music", "icon": "🎧"},
+        {"id": "soundcloud", "name": "SoundCloud", "icon": "☁️"},
+        {"id": "bandcamp", "name": "Bandcamp", "icon": "🎼"},
+        {"id": "tiktok", "name": "TikTok", "icon": "📱"},
+        {"id": "instagram", "name": "Instagram", "icon": "📸"}
+    ]
+    return jsonify({"success": True, "data": platforms_list})
 
 
 @app.route("/api/credits/search")
