@@ -41,7 +41,7 @@ if "%MODE%"=="1" (
     set /p TAIL="آخر كم ثانية (10-15, Enter=15): "
     if "!TAIL!"=="" set TAIL=15
 
-    "C:\Users\musta\AppData\Local\hermes\hermes-agent\venv\Scripts\python" ocr_credit_scanner.py --channel %CHANNEL% --max %MAX% --tail %TAIL%
+    "python" ocr_credit_scanner.py --channel %CHANNEL% --max %MAX% --tail %TAIL%
     goto :DONE
 )
 
@@ -57,7 +57,7 @@ if "%MODE%"=="2" (
     set /p TAIL="آخر كم ثانية (10-15, Enter=15): "
     if "!TAIL!"=="" set TAIL=15
 
-    "C:\Users\musta\AppData\Local\hermes\hermes-agent\venv\Scripts\python" ocr_credit_scanner.py --urls-file urls.txt --tail %TAIL%
+    "python" ocr_credit_scanner.py --urls-file urls.txt --tail %TAIL%
     goto :DONE
 )
 

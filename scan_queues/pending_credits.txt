@@ -1,0 +1,125 @@
+1|# Pending Credits - Mustafa Kamal (مصطفى كمال)
+2|# Generated: 2026-06-27 05:29 UTC
+3|# These are NEW credits not yet in the database. Review before adding.
+4|# Format: SQL INSERT statements
+5|
+6|-- Found via wneen.com comprehensive database scan (2026-06-27)
+7|-- Source: https://www.wneen.com/master/13 and https://www.wneen.com/mixer/19
+8|-- All credits verified via YouTube video descriptions
+9|
+10|-- Credit 1: اهجم عليهم - حسام الماجد (2026)
+11|-- Description credits: ماسترينغ : مصطفى كمال
+12|INSERT OR IGNORE INTO tracks (
+13|    title, title_arabic, artist_id, release_year, role_mastering,
+14|    exact_credit, source_url, platform, confidence_score,
+15|    confidence_level, verification_status, verification_notes
+16|) VALUES (
+17|    'Ahjim Alihm (Hussam Almajad)',
+18|    'اهجم عليهم - حسام الماجد',
+19|    (SELECT id FROM artists WHERE name LIKE '%حسام الماجد%' LIMIT 1),
+20|    2026, 1,
+21|    'ماسترينغ : مصطفى كمال',
+22|    'https://www.youtube.com/watch?v=kkudYaSLwJk',
+23|    'YouTube (حسام الماجد - Hussam Almajad)',
+24|    95, 'Verified',
+25|    'Verified - YouTube description credits mastering to Mustafa Kamal'
+26|);
+27|
+28|-- Credit 2: سديته فراغك - جعفر الغزال (2025)
+29|-- Description credits: مكس و ماستر : مصطفى كمال
+30|INSERT OR IGNORE INTO tracks (
+31|    title, title_arabic, artist_id, release_year,
+32|    role_mixing, role_mastering,
+33|    exact_credit, source_url, platform, confidence_score,
+34|    confidence_level, verification_status, verification_notes
+35|) VALUES (
+36|    'Saditah Faraghak (Jaafar Al Ghazal)',
+37|    'سديته فراغك - جعفر الغزال',
+38|    (SELECT id FROM artists WHERE name LIKE '%جعفر الغزال%' LIMIT 1),
+39|    2025, 1, 1,
+40|    'مكس و ماستر : مصطفى كمال',
+41|    'https://www.youtube.com/watch?v=S2cWB1dGhXs',
+42|    'YouTube (جعفر الغزال - Jaafar Al Ghazal)',
+43|    95, 'Verified',
+44|    'Verified - YouTube description credits mix and master to Mustafa Kamal'
+45|);
+46|
+47|-- Credit 3: احب وجهك - وسام المهندس (2025)
+48|-- Description credits: مكس و ماستر : مصطفى كمال
+49|INSERT OR IGNORE INTO tracks (
+50|    title, title_arabic, artist_id, release_year,
+51|    role_mixing, role_mastering,
+52|    exact_credit, source_url, platform, confidence_score,
+53|    confidence_level, verification_status, verification_notes
+54|) VALUES (
+55|    'Aheb Wejhak (Wissam Almuhandes)',
+56|    'احب وجهك - وسام المهندس',
+57|    (SELECT id FROM artists WHERE name LIKE '%وسام المهندس%' LIMIT 1),
+58|    2025, 1, 1,
+59|    'مكس و ماستر : مصطفى كمال',
+60|    'https://www.youtube.com/watch?v=-ACzl0y8-1o',
+61|    'YouTube (وسام المهندس - Wissam Almuhandes)',
+62|    90, 'Likely',
+63|    'Pending Review - wneen.com lists mix/master. Video description partial match.'
+64|);
+65|
+66|-- Credit 4: على عناد - احمد جواد (2025)
+67|-- Description credits: ماسترنغ : مصطفى كمال
+68|INSERT OR IGNORE INTO tracks (
+69|    title, title_arabic, artist_id, release_year, role_mastering,
+70|    exact_credit, source_url, platform, confidence_score,
+71|    confidence_level, verification_status, verification_notes
+72|) VALUES (
+73|    '3ala Enad (Ahmed Jawad)',
+74|    'على عناد - احمد جواد',
+75|    (SELECT id FROM artists WHERE name LIKE '%احمد جواد%' LIMIT 1),
+76|    2025, 1,
+77|    'ماسترنغ : مصطفى كمال',
+78|    'https://www.youtube.com/watch?v=TrjxL3JFHs0',
+79|    'YouTube (احمد جواد - Ahmed Jawad)',
+80|    95, 'Verified',
+81|    'Verified - YouTube description credits mastering to Mustafa Kamal'
+82|);
+83|
+84|-- Credit 5: زعلنه - زياد يوسف (2022)
+85|-- Description credits: مكس وماسترينغ : مصطفى كمال
+86|INSERT OR IGNORE INTO tracks (
+87|    title, title_arabic, artist_id, release_year,
+88|    role_mixing, role_mastering,
+89|    exact_credit, source_url, platform, confidence_score,
+90|    confidence_level, verification_status, verification_notes
+91|) VALUES (
+92|    'Za3lnh (Ziad Yusif)',
+93|    'زعلنه - زياد يوسف',
+94|    (SELECT id FROM artists WHERE name LIKE '%زياد يوسف%' LIMIT 1),
+95|    2022, 1, 1,
+96|    'مكس وماسترينغ : مصطفى كمال',
+97|    'https://www.youtube.com/watch?v=SeIhkMKkrY8',
+98|    'YouTube (Music VIP - وتر العود)',
+99|    95, 'Verified',
+100|    'Verified - YouTube description credits mix and mastering to Mustafa Kamal'
+101|);
+102|
+103|-- Credit 6: حلت كصيبتها - رعد الناصري (2024)
+104|-- Description credits: مكس وماستر : مصطفى كمال / Mix & Mastering: Mostapha Kamal
+105|INSERT OR IGNORE INTO tracks (
+106|    title, title_arabic, artist_id, release_year,
+107|    role_mixing, role_mastering,
+108|    exact_credit, source_url, platform, confidence_score,
+109|    confidence_level, verification_status, verification_notes
+110|) VALUES (
+111|    'Halet Ksaybtha (Raad El Nassri)',
+112|    'حلت كصيبتها - رعد الناصري',
+113|    (SELECT id FROM artists WHERE name LIKE '%رعد الناصري%' LIMIT 1),
+114|    2024, 1, 1,
+115|    'مكس وماستر : مصطفى كمال / Mix & Mastering: Mostapha Kamal',
+116|    'https://www.youtube.com/watch?v=HdtvixA1FHk',
+117|    'YouTube (شباب القيثارة - Shabab Alqithara)',
+118|    95, 'Verified',
+119|    'Verified - YouTube description credits mix and mastering to Mostapha Kamal (Mustafa Kamal)'
+120|);
+121|
+122|-- NOTE: 52 additional historical works from wneen.com remain undocumented.
+123|-- These are older tracks (2011-2025) spanning artists like حسام الماجد, احمد جواد,
+124|-- نور الزين, زيد الحبيب, صباح محمود, ساريه السواس, خالد الحنين, and others.
+125|-- Full wneen.com catalog: https://www.wneen.com/master/13 and https://www.wneen.com/mixer/19

@@ -14,6 +14,7 @@ ocr_temp/
 # Backups & exports
 backups/
 exports/
+!db_export.json
 
 # Static copies (keep style.css in git — needed for runtime)
 static/*.bak

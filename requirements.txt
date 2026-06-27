@@ -1,2 +1,9 @@
-flask
-flask-cors
+# MUSTAFA MIXING Dashboard
+Flask>=3.0
+flask-cors>=4.0
+markupsafe>=2.1
+Pillow>=9.0
+# OCR (اختياري - للتشغيل على جهازك)
+# easyocr>=1.7
+# opencv-python>=4.8
+# pytesseract>=0.3.10

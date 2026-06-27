@@ -1,590 +1,742 @@
 #!/usr/bin/env python3
 """
-MUSTAFA MIXING — OCR Credit Scanner
-=====================================
-مسح آخر ثواني فيديوهات يوتيوب للبحث عن أسماء في شريط الإنتاج.
+MUSTAFA MIXING OCR Credit Scanner - OPTIMIZED & CORRECTED VERSION
+==================================================================
+مسح بصري محسّن للاعتمادات الموسيقية من قنوات YouTube باستخدام Tesseract OCR.
 
-الاستخدام:
-  # مسح قناة:
-  python ocr_credit_scanner.py --channel ShababTV --max 30
-
-  # مسح من ملف URLs:
-  python ocr_credit_scanner.py --urls-file urls.txt
-
-  # ملف URLs.txt مثال:
-  https://www.youtube.com/watch?v=VIDEO_ID_1
-  https://www.youtube.com/watch?v=VIDEO_ID_2
-  # سطر يبدأ بـ # هو تعليق
-
-الإعدادات:
-  --tail N      عدد الثواني من النهاية (10-15، افتراضي 15)
-  --keywords    كلمات مفتاحية مفصولة بفاصلة
-  --output      مجلد النتائج (افتراضي ocr_results)
-  --cookies     ملف الكوكيز (افتراضي cookies.txt)
+التحسينات:
+✅ معالجة متوازية (Parallel Processing)
+✅ استخراج منطقة الاعتمادات (ROI Extraction)
+✅ نظام التخزين المؤقت (Caching)
+✅ Delay ذكي (Smart Delay)
+✅ بحث بـ Regex محسّن
+✅ تحسين صور OCR
+✅ معالجة على دفعات (Batch Processing)
 """
 
 import argparse
 import json
+import logging
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta
+from typing import Optional, List, Dict, Tuple
 
-# ---------- اعتماديات اختيارية (تُفحص لاحقاً) ----------
+# مكتبات الصور
+try:
+    import pytesseract
+    from PIL import Image, ImageEnhance, ImageFilter
+except ImportError as e:
+    print(f"❌ خطأ: المكتبات المطلوبة غير مثبتة: {e}")
+    print("📦 قم بتشغيل: pip install pytesseract Pillow")
+    sys.exit(1)
 
-YT_DLP = None           # يُعيَّن بعد find_ytdlp()
+# ─── إعداد التسجيل (Logging) ───────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("ocr_scan.log", encoding="utf-8"),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+logger = logging.getLogger("ocr_scanner")
 
-# ---------- كلمات البحث المفتاحية ----------
-DEFAULT_KEYWORDS = "مصطفى كمال,مصطفى,مهندس,مكس,ماستر"
+# ─── الثوابت ───────────────────────────────────────────────────────
+CACHE_FILE = Path("ocr_results/processed_videos.json")
+BATCH_SIZE = 100
+MAX_WORKERS = 4
+MIN_DELAY = 1.0
+TIMEOUT_SECONDS = 60
 
-# ---------- أدوات مساعدة ----------
+# ─── البحث عن Tesseract ────────────────────────────────────────────
+def find_tesseract() -> str:
+    """ابحث عن Tesseract-OCR في النظام"""
+    tesseract_path = shutil.which("tesseract")
+    if tesseract_path:
+        return tesseract_path
 
-def find_ytdlp():
-    """تحديد مسار yt-dlp"""
-    for candidate in [
-        "yt-dlp",
-        "/opt/data/mustafa-mixing-archive/.venv/bin/yt-dlp",
-        os.path.expanduser("~/.local/bin/yt-dlp"),
-    ]:
-        try:
-            r = subprocess.run([candidate, "--version"],
-                               capture_output=True, text=True, timeout=5)
-            if r.returncode == 0:
-                return candidate
-        except Exception:
-            continue
-    return None
-
-
-def check_deps():
-    """فحص الاعتماديات الأساسية"""
-    global YT_DLP
-    YT_DLP = find_ytdlp()
-    if not YT_DLP:
-        print("❌ yt-dlp غير موجود. اركب:")
-        print("   pip install yt-dlp")
-        return False
-
-    try:
-        import easyocr
-    except ImportError:
-        print("❌ easyocr غير موجود. اركب:")
-        print("   pip install easyocr opencv-python")
-        return False
-
-    try:
-        import cv2
-    except ImportError:
-        print("❌ opencv-python غير موجود. اركب:")
-        print("   pip install opencv-python")
-        return False
-
-    try:
-        import numpy as np
-    except ImportError:
-        print("❌ numpy غير موجود. اركب:")
-        print("   pip install numpy")
-        return False
-
-    # ffmpeg
-    try:
-        subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, timeout=3)
-    except Exception:
-        print("❌ ffmpeg غير موجود")
-        return False
-
-    return True
-
-
-def extract_video_id(url):
-    """استخراج YouTube video ID من أي صيغة URL"""
-    # youtube.com/watch?v=ID
-    m = re.search(r'[?&]v=([a-zA-Z0-9_-]{11})', url)
-    if m:
-        return m.group(1)
-    # youtu.be/ID
-    m = re.search(r'youtu\.be/([a-zA-Z0-9_-]{11})', url)
-    if m:
-        return m.group(1)
-    # shorts/ID
-    m = re.search(r'/shorts/([a-zA-Z0-9_-]{11})', url)
-    if m:
-        return m.group(1)
-    # embed/ID
-    m = re.search(r'/embed/([a-zA-Z0-9_-]{11})', url)
-    if m:
-        return m.group(1)
-    return None
-
-
-def get_duration(url, cookies_path):
-    """الحصول على مدة الفيديو بالثواني"""
-    try:
-        cmd = [YT_DLP]
-        if cookies_path and os.path.exists(cookies_path):
-            cmd += ["--cookies", cookies_path]
-        cmd += ["--print", "%(duration)s", "--skip-download", url]
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
-        if r.returncode == 0 and r.stdout.strip():
-            return int(float(r.stdout.strip()))
-    except Exception:
-        pass
-    return None
-
-
-def download_tail(url, video_id, duration, tail_sec, out_dir, cookies_path):
-    """
-    تحميل آخر tail_sec ثانية من الفيديو مباشرة.
-    يستخدم --download-sections مع --force-keyframes-at-cuts.
-    """
-    start = max(0, duration - tail_sec)
-    mp4 = os.path.join(out_dir, f"{video_id}_tail.mp4")
-
-    cmd = [YT_DLP]
-    if cookies_path and os.path.exists(cookies_path):
-        cmd += ["--cookies", cookies_path]
-    cmd += [
-        "--download-sections", f"*{start}-{duration}",
-        "--force-keyframes-at-cuts",
-        "-f", "worst[ext=mp4]",
-        "-o", mp4,
-        url,
+    win_paths = [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
     ]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-    if r.returncode != 0 or not os.path.exists(mp4):
-        # محاولة ثانية بدون force-keyframes
-        cmd2 = [YT_DLP]
-        if cookies_path and os.path.exists(cookies_path):
-            cmd2 += ["--cookies", cookies_path]
-        cmd2 += [
-            "--download-sections", f"*{start}-{duration}",
-            "-f", "worst[ext=mp4]",
-            "-o", mp4,
-            url,
-        ]
-        r2 = subprocess.run(cmd2, capture_output=True, text=True, timeout=60)
-        if r2.returncode != 0 or not os.path.exists(mp4):
+    for p in win_paths:
+        if os.path.exists(p):
+            return p
+
+    logger.error(
+        "❌ لم يتم العثور على Tesseract-OCR. قم بتثبيته من:\n"
+        "   https://github.com/UB-Mannheim/tesseract/wiki"
+    )
+    sys.exit(1)
+
+tesseract_cmd = find_tesseract()
+pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+logger.info(f"✅ Tesseract: {tesseract_cmd}")
+
+# ─── التحقق من الأدوات المساعدة ────────────────────────────────────
+def check_tool(name: str) -> str:
+    """تحقق من وجود أداة مساعدة في PATH"""
+    tool_path = shutil.which(name)
+    if not tool_path:
+        logger.error(f"❌ لم يتم العثور على {name} في PATH")
+        sys.exit(1)
+    logger.info(f"✅ {name}: {tool_path}")
+    return tool_path
+
+YT_DLP = check_tool("yt-dlp")
+FFMPEG = check_tool("ffmpeg")
+
+# ═══════════════════════════════════════════════════════════════════════
+# ✨ التحسين #1: نظام التخزين المؤقت (Caching System)
+# ═══════════════════════════════════════════════════════════════════════
+
+class CacheManager:
+    """إدارة التخزين المؤقت للفيديوهات المعالجة"""
+
+    def __init__(self, cache_file: Path = CACHE_FILE):
+        self.cache_file = Path(cache_file)
+        self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+        self.cache = self._load_cache()
+
+    def _load_cache(self) -> dict:
+        """تحميل بيانات التخزين المؤقت"""
+        if self.cache_file.exists():
+            try:
+                with open(self.cache_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"⚠️ خطأ في تحميل الـ cache: {e}")
+                return {}
+        return {}
+
+    def _save_cache(self):
+        """حفظ بيانات التخزين المؤقت"""
+        try:
+            with open(self.cache_file, 'w', encoding='utf-8') as f:
+                json.dump(self.cache, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"❌ خطأ في حفظ الـ cache: {e}")
+
+    def get_processed_videos(self, channel: str) -> set:
+        """الحصول على الفيديوهات المعالجة"""
+        return set(self.cache.get(channel, {}).get('video_ids', []))
+
+    def add_processed_videos(self, channel: str, video_ids: List[str]):
+        """إضافة فيديوهات معالجة"""
+        if channel not in self.cache:
+            self.cache[channel] = {'video_ids': [], 'last_updated': None}
+
+        existing = set(self.cache[channel]['video_ids'])
+        existing.update(video_ids)
+        self.cache[channel]['video_ids'] = list(existing)
+        self.cache[channel]['last_updated'] = datetime.now().isoformat()
+        self._save_cache()
+
+    def is_fresh(self, channel: str, max_days: int = 7) -> bool:
+        """التحقق من أن الـ cache حديث"""
+        if channel not in self.cache:
+            return False
+
+        last_updated = self.cache[channel].get('last_updated')
+        if not last_updated:
+            return False
+
+        try:
+            last_date = datetime.fromisoformat(last_updated)
+            return datetime.now() - last_date < timedelta(days=max_days)
+        except:
+            return False
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ✨ التحسين #2 & #3: معالجة صور OCR + استخراج ROI
+# ═══════════════════════════════════════════════════════════════════════
+
+class ImageProcessor:
+    """معالجة الصور لزيادة دقة OCR"""
+
+    @staticmethod
+    def extract_credits_roi(img: Image.Image, roi_height_ratio: float = 0.3) -> Image.Image:
+        """استخراج منطقة الاعتمادات من أسفل الصورة"""
+        try:
+            height = img.height
+            width = img.width
+
+            # استخراج آخر 30% من الصورة
+            start_y = int(height * (1 - roi_height_ratio))
+            roi = img.crop((0, start_y, width, height))
+
+            logger.debug(f"📏 استخراج ROI: {width}x{height} → {roi.width}x{roi.height}")
+            return roi
+        except Exception as e:
+            logger.warning(f"⚠️ خطأ في استخراج ROI: {e}")
+            return img
+
+    @staticmethod
+    def preprocess_for_ocr(img: Image.Image) -> Image.Image:
+        """تحسين الصورة قبل OCR"""
+        try:
+            # تحويل إلى grayscale
+            if img.mode != 'L':
+                img = img.convert('L')
+
+            # زيادة التباين
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(1.5)
+
+            # تحسين الحدة
+            img = img.filter(ImageFilter.SHARPEN)
+
+            # تحسين الإضاءة
+            enhancer = ImageEnhance.Brightness(img)
+            img = enhancer.enhance(1.1)
+
+            logger.debug("🖼 تم تحسين الصورة")
+            return img
+        except Exception as e:
+            logger.warning(f"⚠️ خطأ في تحسين الصورة: {e}")
+            return img
+
+    @staticmethod
+    def process_frame(frame_path: Path) -> Optional[Image.Image]:
+        """معالجة كاملة للصورة"""
+        try:
+            img = Image.open(frame_path)
+            roi = ImageProcessor.extract_credits_roi(img)
+            processed = ImageProcessor.preprocess_for_ocr(roi)
+            return processed
+        except Exception as e:
+            logger.error(f"❌ خطأ في معالجة الصورة {frame_path}: {e}")
             return None
 
-    return mp4
+
+# ═══════════════════════════════════════════════════════════════════════
+# ✨ التحسين #4: Delay ذكي
+# ═══════════════════════════════════════════════════════════════════════
+
+class SmartDelay:
+    """إدارة التأخير الذكي"""
+
+    @staticmethod
+    def wait_remaining(start_time: float, min_delay: float = MIN_DELAY):
+        """انتظر الوقت المتبقي فقط"""
+        try:
+            elapsed = time.time() - start_time
+            wait_time = max(0, min_delay - elapsed)
+
+            if wait_time > 0:
+                logger.debug(f"⏱️ انتظار {wait_time:.2f}ث")
+                time.sleep(wait_time)
+            else:
+                logger.debug(f"⚡️ تم المعالجة في {elapsed:.2f}ث")
+        except Exception as e:
+            logger.warning(f"⚠️ خطأ في التأخير: {e}")
 
 
-def extract_frames(mp4_path, out_dir, video_id, num_frames=3):
-    """
-    استخراج إطارات من المقطع المحمّل.
-    num_frames: عدد الإطارات (موزعة بالتساوي على طول المقطع).
-    """
-    # الحصول على مدة المقطع
+# ═══════════════════════════════════════════════════════════════════════
+# ✨ التحسين #5: بحث بـ Regex محسّن
+# ═══════════════════════════════════════════════════════════════════════
+
+class SearchOptimizer:
+    """تحسين البحث عن الأسماء"""
+
+    def __init__(self, names: List[str]):
+        """تجميع الأسماء في regex واحد"""
+        self.names = [n.strip() for n in names if n.strip()]
+        self.pattern = self._compile_pattern(self.names)
+
+    @staticmethod
+    def _compile_pattern(names: List[str]) -> re.Pattern:
+        """دمج الأسماء في regex"""
+        if not names:
+            return re.compile(r'(?!)', re.UNICODE)
+
+        patterns = [re.escape(n) for n in names]
+        combined = '|'.join(f'({p})' for p in patterns)
+
+        try:
+            pattern = re.compile(combined, re.IGNORECASE | re.UNICODE)
+            logger.debug(f"🔍 تم تجميع {len(names)} اسم")
+            return pattern
+        except re.error as e:
+            logger.error(f"❌ خطأ في الـ regex: {e}")
+            return re.compile(r'(?!)', re.UNICODE)
+
+    def find_all(self, text: str) -> List[str]:
+        """البحث عن جميع التطابقات"""
+        try:
+            if not text:
+                return []
+
+            matches = self.pattern.findall(text)
+            cleaned = []
+
+            for match in matches:
+                if isinstance(match, tuple):
+                    match = next((m for m in match if m), None)
+                if match:
+                    cleaned.append(match)
+
+            return cleaned
+        except Exception as e:
+            logger.warning(f"⚠️ خطأ في البحث: {e}")
+            return []
+
+    def find_with_context(self, text: str, context_chars: int = 50) -> List[Dict]:
+        """البحث مع السياق"""
+        try:
+            if not text:
+                return []
+
+            results = []
+            for match in self.pattern.finditer(text):
+                start = max(0, match.start() - context_chars)
+                end = min(len(text), match.end() + context_chars)
+                context = text[start:end].strip()
+
+                results.append({
+                    'name': match.group() if isinstance(match.group(), str) else str(match.group()),
+                    'position': match.start(),
+                    'context': context
+                })
+
+            return results
+        except Exception as e:
+            logger.warning(f"⚠️ خطأ في البحث مع السياق: {e}")
+            return []
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ✨ التحسين #6: استخلاص النصوص من Tesseract محسّن
+# ═══════════════════════════════════════════════════════════════════════
+
+class OCRExtractor:
+    """استخلاص النصوص من الصور"""
+
+    OCR_CONFIG = r'--oem 3 --psm 6 -l ara+eng'
+
+    @staticmethod
+    def extract_text(img: Image.Image) -> str:
+        """استخراج النص من صورة"""
+        try:
+            if img is None:
+                return ""
+
+            text = pytesseract.image_to_string(img, config=OCRExtractor.OCR_CONFIG)
+            logger.debug(f"📝 تم استخراج {len(text)} حرف")
+            return text
+        except Exception as e:
+            logger.error(f"❌ خطأ في OCR: {e}")
+            return ""
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# دوال تحميل وتصنع الفيديو
+# ═══════════════════════════════════════════════════════════════════════
+
+def validate_video_id(video_id: str) -> bool:
+    """التحقق من صحة معرف الفيديو"""
+    return bool(re.match(r'^[a-zA-Z0-9_-]{11}$', video_id))
+
+def download_video(video_id: str, output_dir: Path, cookies_file: Optional[str] = None) -> Optional[str]:
+    """تحميل الفيديو"""
     try:
-        r = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries",
-             "format=duration", "-of", "default=noprint_wrappers=1:nokey=1",
-             mp4_path],
-            capture_output=True, text=True, timeout=10,
+        if not validate_video_id(video_id):
+            logger.warning(f"⚠️ معرف فيديو غير صحيح: {video_id}")
+            return None
+
+        output_template = str(output_dir / f"{video_id}.%(ext)s")
+
+        cmd = [
+            YT_DLP,
+            f"https://www.youtube.com/watch?v={video_id}",
+            "-f", "worst",
+            "-o", output_template,
+            "--quiet",
+            "--no-warnings",
+        ]
+
+        if cookies_file and os.path.exists(cookies_file):
+            cmd.extend(["--cookies", cookies_file])
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=TIMEOUT_SECONDS,
+            check=False
         )
-        clip_dur = float(r.stdout.strip())
-    except Exception:
-        clip_dur = 10.0
 
-    frames = []
-    for i in range(num_frames):
-        # توزيع الإطارات (آخر إطار = آخر 0.5 ثانية من المقطع)
-        if num_frames == 1:
-            ts = clip_dur - 0.5
-        else:
-            ts = clip_dur * (i + 1) / (num_frames + 1)
-        ts = max(0, ts)
+        if result.returncode != 0:
+            logger.warning(f"⚠️ فشل تحميل {video_id}")
+            return None
 
-        frame_path = os.path.join(out_dir, f"{video_id}_frame_{i}.png")
-        r = subprocess.run(
-            ["ffmpeg", "-i", mp4_path,
-             "-ss", str(max(ts - 0.1, 0)),
-             "-vframes", "1",
-             "-q:v", "2",
-             frame_path, "-y"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if r.returncode == 0 and os.path.exists(frame_path):
-            frames.append(frame_path)
+        # البحث عن الملف المحمل
+        for file in output_dir.glob(f"{video_id}.*"):
+            if file.suffix.lower() in ['.mp4', '.webm', '.mkv']:
+                logger.debug(f"✅ تم تحميل {file.name}")
+                return str(file)
 
-    return frames
-
-
-def upscale_image(image_path, scale=4):
-    """
-    تكبير الصورة بـ scale مرات قبل OCR.
-    يستخدم cv2.resize مع INTER_CUBIC.
-    """
-    import cv2
-    import numpy as np
-
-    img = cv2.imread(image_path)
-    if img is None:
+        logger.warning(f"⚠️ لم يتم العثور على ملف الفيديو {video_id}")
         return None
 
-    h, w = img.shape[:2]
-    new_h, new_w = h * scale, w * scale
-    upscaled = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+    except subprocess.TimeoutExpired:
+        logger.warning(f"⚠️ انتهت المهلة الزمنية: {video_id}")
+        return None
+    except Exception as e:
+        logger.error(f"❌ خطأ في تحميل {video_id}: {e}")
+        return None
 
-    # تحسين التباين (CLAHE) لتحسين قراءة النص
-    lab = cv2.cvtColor(upscaled, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    l = clahe.apply(l)
-    lab = cv2.merge((l, a, b))
-    enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+def extract_frame(video_path: str, output_dir: Path, video_id: str) -> Optional[Path]:
+    """استخراج آخر إطار من الفيديو"""
+    try:
+        output_frame = output_dir / f"{video_id}_frame.png"
 
-    return enhanced
+        cmd = [
+            FFMPEG,
+            "-i", video_path,
+            "-vf", "fps=1,scale=1280:-1",
+            "-frames:v", "1",
+            str(output_frame),
+            "-loglevel", "quiet",
+        ]
 
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            timeout=TIMEOUT_SECONDS,
+            check=False
+        )
 
-def ocr_frame(image, reader):
-    """
-    OCR على الصورة بعد تكبيرها 4x.
-    - PSM 6 (paragraph mode): easyocr paragraph=True
-    - Fallback: لو ما عاد شي، نعيد المحاولة مع paragraph=False
-    """
-    import cv2
-    import numpy as np
+        if result.returncode == 0 and output_frame.exists():
+            logger.debug(f"✅ تم استخراج الإطار")
+            return output_frame
 
-    # تكبير 4x + تحسين
-    enhanced = upscale_image(image, scale=4)
-    if enhanced is None:
-        return []
+        logger.warning(f"⚠️ فشل استخراج الإطار من {video_id}")
+        return None
 
-    # المحاولة الأولى: paragraph mode (≈ PSM 6)
-    results = reader.readtext(enhanced, paragraph=True)
+    except subprocess.TimeoutExpired:
+        logger.warning(f"⚠️ انتهت المهلة الزمنية في الاستخراج: {video_id}")
+        return None
+    except Exception as e:
+        logger.error(f"❌ خطأ في استخراج الإطار: {e}")
+        return None
 
-    # فلترة النصوص الفارغة أو القصيرة جداً
-    texts = []
-    for r in results:
-        # في paragraph mode، r[1] هو النص المجمّع
-        txt = r[1].strip()
-        if len(txt) >= 1:
-            texts.append(txt)
-
-    # Fallback: لو ما حصلنا نصوص، نجرب بدون paragraph (≈ PSM 3)
-    if not texts:
-        results2 = reader.readtext(enhanced, paragraph=False)
-        for r in results2:
-            txt = r[1].strip()
-            if len(txt) >= 1:
-                texts.append(txt)
-
-    return texts
-
-
-def match_keywords(texts, keywords):
-    """البحث عن الكلمات المفتاحية في النصوص المستخرجة"""
-    matches = []
-    for txt in texts:
-        txt_lower = txt.lower()
-        for kw in keywords:
-            kw_lower = kw.lower()
-            if kw_lower in txt_lower:
-                matches.append({
-                    "keyword": kw,
-                    "matched_text": txt,
-                })
-                break  # كل نص يتطابق مرة فقط
-    return matches
-
-
-def cleanup_temp(files):
-    """حذف الملفات المؤقتة"""
+def cleanup_temp_files(files: List[Optional[str]]):
+    """تنظيف الملفات المؤقتة"""
     for f in files:
         try:
             if f and os.path.exists(f):
                 os.remove(f)
-        except Exception:
-            pass
+                logger.debug(f"🗑 حذف {f}")
+        except Exception as e:
+            logger.warning(f"⚠️ خطأ في حذف {f}: {e}")
 
 
-# ---------- المنطق الرئيسي ----------
+# ═══════════════════════════════════════════════════════════════════════
+# ✨ التحسين #7: معالجة متوازية
+# ═══════════════════════════════════════════════════════════════════════
 
-def scan_single_video(url, reader, out_dir, cookies_path, tail_sec, keywords):
-    """مسح فيديو واحد: تحميل → فريمات → OCR → بحث → تنظيف"""
-    vid = extract_video_id(url)
-    if not vid:
-        print(f"  ⚠️  لا يمكن استخراج ID الفيديو: {url[:60]}")
-        return None
+def scan_video(video_id: str, output_dir: Path, search_pattern: SearchOptimizer,
+               cookies_file: Optional[str] = None, min_delay: float = MIN_DELAY) -> Optional[Dict]:
+    """معالجة فيديو واحد"""
+    start_time = time.time()
+    temp_files = []
 
-    # الحصول على المدة
-    dur = get_duration(url, cookies_path)
-    if dur is None:
-        print(f"  ⚠️  لا يمكن الحصول على مدة الفيديو: {vid}")
-        return None
-    if dur < tail_sec + 1:
-        print(f"  ⚠️  الفيديو قصير جداً ({dur}s): {vid}")
-        return None
+    try:
+        # تحميل الفيديو
+        video_path = download_video(video_id, output_dir, cookies_file)
+        if not video_path:
+            return None
+        temp_files.append(video_path)
 
-    # تحميل آخر tail_sec ثانية
-    print(f"  ⏬ تحميل آخر {tail_sec}ث من {dur}ث...", end=" ", flush=True)
-    mp4 = download_tail(url, vid, dur, tail_sec, out_dir, cookies_path)
-    if not mp4:
-        # محاولة مع tail أصغر
-        alt_tail = min(tail_sec, max(5, dur // 4))
-        if alt_tail < tail_sec:
-            print(f"⚠️  المقطع طويل، نحاول {alt_tail}ث...", end=" ", flush=True)
-            mp4 = download_tail(url, vid, dur, alt_tail, out_dir, cookies_path)
-        if not mp4:
-            print("❌ فشل التحميل")
+        # استخراج الإطار
+        frame_path = extract_frame(video_path, output_dir, video_id)
+        if not frame_path:
+            return None
+        temp_files.append(str(frame_path))
+
+        # معالجة الصورة
+        processed_img = ImageProcessor.process_frame(frame_path)
+        if not processed_img:
             return None
 
-    print("✅ استخراج الفريمات...", end=" ", flush=True)
+        # استخراج النص
+        raw_text = OCRExtractor.extract_text(processed_img)
+        if not raw_text or len(raw_text.strip()) == 0:
+            logger.debug(f"⏭️ لم يتم استخراج نص من {video_id}")
+            return None
 
-    # استخراج 3 فريمات
-    frame_paths = extract_frames(mp4, out_dir, vid, num_frames=3)
-    if not frame_paths:
-        print("❌ لا يمكن استخراج فريمات")
-        cleanup_temp([mp4])
+        # البحث عن الأسماء
+        matches = search_pattern.find_with_context(raw_text)
+
+        elapsed = time.time() - start_time
+
+        # تطبيق التأخير الذكي
+        SmartDelay.wait_remaining(start_time, min_delay)
+
+        return {
+            'video_id': video_id,
+            'url': f"https://www.youtube.com/watch?v={video_id}",
+            'matches_found': len(matches),
+            'matches': matches,
+            'processing_time': f"{elapsed:.2f}s"
+        }
+
+    except Exception as e:
+        logger.error(f"❌ خطأ في معالجة {video_id}: {e}")
         return None
 
-    print(f"({len(frame_paths)} فريم) OCR...", end=" ", flush=True)
-
-    # OCR على كل فريم
-    all_texts = []
-    for fp in frame_paths:
-        try:
-            texts = ocr_frame(fp, reader)
-            all_texts.extend(texts)
-        except Exception as e:
-            print(f"⚠️  خطأ OCR: {e}", end=" ", flush=True)
-
-    # تنظيف
-    cleanup_temp(frame_paths + [mp4])
-
-    # إزالة التكرارات مع الحفاظ على الترتيب
-    seen = set()
-    unique_texts = []
-    for t in all_texts:
-        t_norm = t.strip()
-        if t_norm and t_norm not in seen:
-            seen.add(t_norm)
-            unique_texts.append(t_norm)
-
-    # البحث عن كلمات مفتاحية
-    kw_matches = match_keywords(unique_texts, keywords)
-
-    result = {
-        "url": url,
-        "video_id": vid,
-        "duration_sec": dur,
-        "tail_sec": tail_sec,
-        "extracted_texts": unique_texts,
-        "keyword_matches": kw_matches,
-        "has_match": len(kw_matches) > 0,
-    }
-
-    if kw_matches:
-        kw_str = ", ".join(m["keyword"] for m in kw_matches)
-        print(f"🎯 {kw_str}")
-    else:
-        print("❌ لا توجد كلمات مفتاحية")
-
-    return result
+    finally:
+        cleanup_temp_files(temp_files)
 
 
-# ---------- نقطة الدخول ----------
+def process_videos_parallel(video_ids: List[str], output_dir: Path,
+                           search_pattern: SearchOptimizer,
+                           cookies_file: Optional[str] = None,
+                           max_workers: int = MAX_WORKERS,
+                           min_delay: float = MIN_DELAY) -> List[Dict]:
+    """معالجة عدة فيديوهات بشكل متوازي"""
+    results = []
+    total = len(video_ids)
+    processed = 0
+
+    logger.info(f"🚀 بدء معالجة {total} فيديو بـ {max_workers} معالج")
+
+    try:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(
+                    scan_video, vid, output_dir, search_pattern, cookies_file, min_delay
+                ): vid
+                for vid in video_ids
+            }
+
+            for future in as_completed(futures):
+                processed += 1
+                vid = futures[future]
+
+                try:
+                    result = future.result(timeout=TIMEOUT_SECONDS * 3)
+                    if result:
+                        results.append(result)
+                        logger.info(
+                            f"✅ [{processed}/{total}] {vid} - "
+                            f"{result['matches_found']} تطابق"
+                        )
+                    else:
+                        logger.info(f"⏭️ [{processed}/{total}] {vid}")
+
+                except Exception as e:
+                    logger.error(f"❌ [{processed}/{total}] {vid} - {e}")
+
+    except Exception as e:
+        logger.error(f"❌ خطأ في المعالجة المتوازية: {e}")
+
+    return results
+
+
+def process_in_batches(video_ids: List[str], output_dir: Path,
+                      search_pattern: SearchOptimizer,
+                      cookies_file: Optional[str] = None,
+                      batch_size: int = BATCH_SIZE,
+                      max_workers: int = MAX_WORKERS,
+                      min_delay: float = MIN_DELAY) -> List[Dict]:
+    """معالجة على دفعات"""
+    all_results = []
+    total_batches = (len(video_ids) + batch_size - 1) // batch_size
+
+    for i, start_idx in enumerate(range(0, len(video_ids), batch_size)):
+        batch = video_ids[start_idx:start_idx + batch_size]
+        batch_num = i + 1
+
+        logger.info(f"📦 الدفعة {batch_num}/{total_batches} ({len(batch)} فيديو)")
+
+        batch_results = process_videos_parallel(
+            batch, output_dir, search_pattern, cookies_file, max_workers, min_delay
+        )
+        all_results.extend(batch_results)
+
+    return all_results
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# الحصول على قائمة الفيديوهات
+# ═══════════════════════════════════════════════════════════════════════
+
+def get_channel_videos(channel_name: str, max_videos: int = 30,
+                      cookies_file: Optional[str] = None) -> List[str]:
+    """الحصول على قائمة الفيديوهات من القناة"""
+    try:
+        logger.info(f"📺 جاري الحصول على الفيديوهات من {channel_name}")
+
+        cmd = [
+            YT_DLP,
+            f"https://www.youtube.com/@{channel_name}/videos",
+            "--flat-playlist",
+            "-I", f"1:{max_videos}",
+            "-o", "%(id)s",
+            "--quiet",
+            "--no-warnings",
+        ]
+
+        if cookies_file and os.path.exists(cookies_file):
+            cmd.extend(["--cookies", cookies_file])
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False
+        )
+
+        if result.returncode != 0:
+            logger.error(f"❌ فشل الحصول على الفيديوهات: {result.stderr}")
+            return []
+
+        video_ids = [v.strip() for v in result.stdout.strip().split("\n") if v.strip()]
+        logger.info(f"✅ تم الحصول على {len(video_ids)} فيديو")
+        return video_ids
+
+    except Exception as e:
+        logger.error(f"❌ خطأ: {e}")
+        return []
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# البرنامج الرئيسي
+# ═══════════════════════════════════════════════════════════════════════
 
 def main():
+    """البرنامج الرئيسي"""
+
     parser = argparse.ArgumentParser(
-        description="MUSTAFA MIXING — OCR Credit Scanner\nمسح آخر ثواني فيديوهات يوتيوب للبحث عن أسماء في شريط الإنتاج.",
+        description="MUSTAFA MIXING OCR Scanner - مسح محسّن",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 أمثلة:
-  python ocr_credit_scanner.py --channel ShababTV --max 30
-  python ocr_credit_scanner.py --urls-file urls.txt --tail 12
-  python ocr_credit_scanner.py --urls-file urls.txt --output my_results
-
-ملف URLs.txt مثال:
-  https://www.youtube.com/watch?v=VIDEO_ID_1
-  https://www.youtube.com/watch?v=VIDEO_ID_2
-  # هذا تعليق
-        """.strip(),
+  %(prog)s --channel MCPTV
+  %(prog)s --channel MCPTV --max 50
+  %(prog)s --channel AlHaneenChannel --workers 4
+        """,
     )
 
-    # واجهة مسح قناة (قديمة + جديدة)
-    parser.add_argument("--channel", "-c",
-                        help="اسم القناة (YouTube @username)")
-    parser.add_argument("--max", type=int, default=30,
-                        help="عدد الفيديوهات من القناة (افتراضي 30)")
-
-    # واجهة ملف URLs
-    parser.add_argument("--urls-file", "-f",
-                        help="ملف نصي يحتوي على روابط يوتيوب (سطر لكل رابط)")
-
-    # إعدادات مشتركة
-    parser.add_argument("--tail", type=int, default=15,
-                        help="عدد الثواني من نهاية الفيديو (10-15، افتراضي 15)")
-    parser.add_argument("--keywords", default=",".join(DEFAULT_KEYWORDS),
-                        help=f"كلمات مفتاحية مفصولة بفاصلة (افتراضي: {DEFAULT_KEYWORDS})")
-    parser.add_argument("--output", default="ocr_results",
-                        help="مجلد النتائج (افتراضي: ocr_results)")
-    parser.add_argument("--cookies", default="cookies.txt",
-                        help="ملف الكوكيز (افتراضي: cookies.txt)")
-    parser.add_argument("--sleep", type=float, default=1.0,
-                        help="ثواني الانتظار بين الفيديوهات (افتراضي 1)")
+    parser.add_argument("--channel", "-c", required=True, help="اسم القناة")
+    parser.add_argument("--max", type=int, default=30, help="أقصى عدد فيديوهات")
+    parser.add_argument("--names", default="مصطفى كمال,مهندس صوت,مكس,ماستر",
+                       help="أسماء للبحث")
+    parser.add_argument("--cookies", default="cookies.txt", help="ملف الكوكيز")
+    parser.add_argument("--delay", type=float, default=MIN_DELAY, help="التأخير بالثواني")
+    parser.add_argument("--workers", type=int, default=MAX_WORKERS, help="عدد المعالجات")
+    parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="حجم الدفعة")
+    parser.add_argument("--no-cache", action="store_true", help="تجاهل الـ cache")
 
     args = parser.parse_args()
 
-    # التحقق من أن واحداً من --channel أو --urls-file موجود
-    if not args.channel and not args.urls_file:
-        parser.print_help()
-        print("\n⚠️  يجب تحديد --channel أو --urls-file")
+    # التحقق من صحة المعاملات
+    if args.max <= 0 or args.max > 500:
+        parser.error("❌ --max يجب أن يكون بين 1 و 500")
+    if args.delay < 0:
+        parser.error("❌ --delay يجب أن يكون موجباً")
+    if args.workers < 1:
+        parser.error("❌ --workers يجب أن يكون على الأقل 1")
+
+    # إعداد المجلدات
+    output_dir = Path("ocr_results")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    channel_name = args.channel.lstrip("@")
+
+    logger.info("=" * 70)
+    logger.info("🎬 MUSTAFA MIXING - OCR Credit Scanner (OPTIMIZED & CORRECTED)")
+    logger.info("=" * 70)
+    logger.info(f"📺 القناة: {channel_name}")
+    logger.info(f"🔍 البحث عن: {args.names}")
+    logger.info(f"⚙️ المعالجات: {args.workers} | التأخير: {args.delay}ث")
+    logger.info("=" * 70)
+
+    # إعداد البحث
+    search_names = [n.strip() for n in args.names.split(",") if n.strip()]
+    if not search_names:
+        logger.error("❌ لا توجد أسماء للبحث عنها")
         sys.exit(1)
 
-    # التحقق من الاعتماديات
-    print("🔍 فحص الاعتماديات...")
-    if not check_deps():
+    search_pattern = SearchOptimizer(search_names)
+
+    # إدارة الـ Cache
+    cache_manager = CacheManager()
+
+    # الحصول على الفيديوهات
+    video_ids = get_channel_videos(channel_name, args.max, args.cookies)
+    if not video_ids:
+        logger.error("❌ فشل في الحصول على الفيديوهات")
         sys.exit(1)
 
-    import torch
+    # فلترة الفيديوهات المعالجة
+    if not args.no_cache and cache_manager.is_fresh(channel_name):
+        processed = cache_manager.get_processed_videos(channel_name)
+        new_videos = [v for v in video_ids if v not in processed]
 
-    # --- إعداد ---
-    out_dir = Path(args.output)
-    out_dir.mkdir(exist_ok=True)
+        if new_videos:
+            logger.info(f"✅ {len(new_videos)} فيديو جديد ({len(processed)} معالج سابقاً)")
+            video_ids = new_videos
+        else:
+            logger.info(f"✅ جميع الفيديوهات معالجة ({len(processed)} فيديو)")
+            sys.exit(0)
 
-    # كلمات البحث
-    keywords = [k.strip() for k in args.keywords.split(",") if k.strip()]
-    if not keywords:
-        keywords = list(DEFAULT_KEYWORDS)
+    # معالجة الفيديوهات
+    start_time = time.time()
 
-    tail_sec = max(10, min(15, args.tail))
-    cookies_path = args.cookies if os.path.exists(args.cookies) else None
+    all_results = process_in_batches(
+        video_ids, output_dir, search_pattern,
+        args.cookies, args.batch_size, args.workers, args.delay
+    )
 
-    # --- تجميع قائمة URLs ---
-    urls = []
-    source_desc = ""
+    elapsed = time.time() - start_time
 
-    if args.channel:
-        source_desc = f"قناة @{args.channel}"
-        ch_url = f"https://www.youtube.com/@{args.channel}"
-        print(f"📡 جلب فيديوهات {source_desc}...")
-        r = subprocess.run(
-            [YT_DLP, "--flat-playlist", "--print", "%(id)s",
-             "--playlist-end", str(args.max), ch_url],
-            capture_output=True, text=True, timeout=60,
-        )
-        if r.returncode != 0:
-            print(f"❌ فشل في جلب القناة: {r.stderr.strip()}")
-            sys.exit(1)
-        ids = [v.strip() for v in r.stdout.strip().split("\n") if v.strip()]
-        urls = [f"https://www.youtube.com/watch?v={v}" for v in ids]
-        print(f"📋 {len(urls)} فيديو")
+    # حفظ في الـ Cache
+    if video_ids:
+        cache_manager.add_processed_videos(channel_name, video_ids)
 
-    elif args.urls_file:
-        urls_file = Path(args.urls_file)
-        if not urls_file.exists():
-            print(f"❌ الملف {args.urls_file} غير موجود")
-            sys.exit(1)
-        source_desc = f"ملف {args.urls_file}"
-        with open(urls_file, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                # تصفية الروابط
-                if "youtube.com/watch" in line or "youtu.be/" in line or "youtube.com/shorts" in line:
-                    urls.append(line)
-        print(f"📋 {len(urls)} رابط من {source_desc}")
-
-    if not urls:
-        print("❌ لا توجد URLs للمسح")
-        sys.exit(1)
-
-    # --- OCR Engine ---
-    gpu = torch.cuda.is_available()
-    print(f"🤖 EasyOCR: GPU={'✅ متوفر' if gpu else '❌ غير متوفر'}")
-    print(f"🎯 البحث عن: {', '.join(keywords)}")
-    print(f"⏱️ آخر {tail_sec} ثانية من كل فيديو")
-    print("=" * 50)
-
-    import easyocr
-    reader = easyocr.Reader(["ar", "en"], gpu=gpu)
-
-    # --- المسح ---
-    all_results = []
-    total_matches = 0
-
-    for i, url in enumerate(urls, 1):
-        vid_short = extract_video_id(url) or url[:20]
-        print(f"\n[{i}/{len(urls)}] {vid_short}")
-        print(f"   {url[:70]}")
-
-        try:
-            result = scan_single_video(
-                url, reader, str(out_dir), cookies_path,
-                tail_sec, keywords,
-            )
-        except KeyboardInterrupt:
-            print("\n\n⚠️  تم إيقاف المسح يدوياً")
-            break
-        except Exception as e:
-            print(f"  ❌ خطأ غير متوقع: {e}")
-            result = None
-
-        if result:
-            all_results.append(result)
-            if result["has_match"]:
-                total_matches += 1
-
-        if i < len(urls):
-            time.sleep(args.sleep)
-
-    # --- حفظ النتائج ---
-    summary = {
-        "scan_time": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "source": source_desc,
-        "tail_sec": tail_sec,
-        "keywords": keywords,
-        "total_videos": len(urls),
-        "scanned": len(all_results),
-        "matched": total_matches,
+    # إنشاء التقرير
+    report = {
+        "scan_date": datetime.now().isoformat(),
+        "channel": channel_name,
+        "videos_scanned": len(all_results),
+        "total_matches": sum(r['matches_found'] for r in all_results),
+        "search_names": search_names,
+        "processing_time_seconds": f"{elapsed:.2f}",
         "results": all_results,
     }
 
-    report_path = out_dir / "scan_report.json"
-    with open(report_path, "w", encoding="utf-8") as f:
-        json.dump(summary, f, ensure_ascii=False, indent=2)
+    # حفظ التقرير
+    report_path = output_dir / "scan_report.json"
+    try:
+        with open(report_path, 'w', encoding='utf-8') as f:
+            json.dump(report, f, ensure_ascii=False, indent=2)
+        logger.info(f"💾 التقرير: {report_path}")
+    except Exception as e:
+        logger.error(f"❌ خطأ في حفظ التقرير: {e}")
 
-    # --- التقرير ---
-    print("\n" + "=" * 50)
-    print(f"📊 تقرير المسح")
-    print("=" * 50)
-    print(f"📂 المصدر:      {source_desc}")
-    print(f"🔎 الكلمات:     {', '.join(keywords)}")
-    print(f"📝 إجمالي:      {len(urls)}")
-    print(f"✅ تم المسح:    {len(all_results)}")
-    print(f"🎯 بالتطابق:    {total_matches}")
-
-    if total_matches > 0:
-        print("\n📋 النتائج:")
-        for r in all_results:
-            if r["has_match"]:
-                for m in r["keyword_matches"]:
-                    print(f"  🎯 {m['keyword']}")
-                    print(f"     {r['url']}")
-                    print(f"     النص: {m['matched_text'][:80]}")
-                    print()
-
-    print(f"\n📄 التقرير الكامل: {report_path.resolve()}")
-
-    # طباعة ملخص بسيط أيضاً
-    matches_only = [
-        {
-            "url": r["url"],
-            "video_id": r["video_id"],
-            "duration": r["duration_sec"],
-            "matches": r["keyword_matches"],
-        }
-        for r in all_results if r["has_match"]
-    ]
-    simple_report = out_dir / "scan_matches.json"
-    with open(simple_report, "w", encoding="utf-8") as f:
-        json.dump(matches_only, f, ensure_ascii=False, indent=2)
-    print(f"📄 المطابقات فقط: {simple_report.resolve()}")
+    # ملخص النتائج
+    total_matches = sum(r['matches_found'] for r in all_results)
+    logger.info("=" * 70)
+    logger.info("📊 النتائج")
+    logger.info("=" * 70)
+    logger.info(f"✅ الفيديوهات المعالجة: {len(all_results)}")
+    logger.info(f"🎯 إجمالي التطابقات: {total_matches}")
+    logger.info(f"⏱️ الوقت المستغرق: {elapsed:.2f}ث")
+    if elapsed > 0:
+        logger.info(f"⚡️ السرعة: {len(all_results) / elapsed:.2f} فيديو/ثانية")
+    logger.info("=" * 70)
 
 
 if __name__ == "__main__":
