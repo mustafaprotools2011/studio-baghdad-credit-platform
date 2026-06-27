@@ -816,33 +816,62 @@ def advanced_search():
 </div>
 
 <script>
-document.getElementById('searchForm').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const fd = new FormData(this);
-  const params = new URLSearchParams();
-  for (let [k,v] of fd.entries()) { if(v.trim()) params.append(k, v.trim()); }
-  const resDiv = document.getElementById('searchResults');
-  resDiv.innerHTML = '<div style="text-align:center;padding:30px;color:var(--gold)">⏳ جاري البحث...</div>';
+// ===== MUSTAFA MIXING — Advanced Search (Dual: Mock + API) =====
+const artistsDatabase = [
+  { id: 1, name_ar: "مصطفى كمال", name_en: "Mustafa Kamal", profession_ar: "مهندس صوت", profession_en: "Sound Engineer", platforms: ["youtube", "spotify", "soundcloud"], followers: 125000, image: "🎤" },
+  { id: 2, name_ar: "أحمد شريف", name_en: "Ahmed Sharif", profession_ar: "منتج موسيقي", profession_en: "Music Producer", platforms: ["youtube", "apple-music", "bandcamp"], followers: 89000, image: "🎹" },
+  { id: 3, name_ar: "ليلى محمود", name_en: "Layla Mahmoud", profession_ar: "مغنية صوت", profession_en: "Vocalist", platforms: ["spotify", "apple-music", "tiktok", "instagram"], followers: 256000, image: "🎤" },
+  { id: 4, name_ar: "سارة علي", name_en: "Sarah Ali", profession_ar: "منسقة موسيقية", profession_en: "Music Arranger", platforms: ["youtube", "soundcloud"], followers: 67000, image: "🎼" },
+  { id: 5, name_ar: "محمود علوان", name_en: "Mahmoud Alwan", profession_ar: "مهندس ماستر", profession_en: "Mastering Engineer", platforms: ["spotify", "bandcamp"], followers: 45000, image: "🎧" },
+  { id: 6, name_ar: "فاطمة حسن", name_en: "Fatima Hassan", profession_ar: "كاتبة أغاني", profession_en: "Songwriter", platforms: ["youtube", "tiktok", "instagram"], followers: 198000, image: "✍️" }
+];
 
-  try {
-    const r = await fetch('/api/credits/search?' + params.toString());
-    const data = await r.json();
-    if (data.length === 0) {
-      resDiv.innerHTML = '<div class=card style="text-align:center;padding:30px"><h3>❌ لا توجد نتائج</h3><p>حاول تغيير معايير البحث</p></div>';
-      return;
-    }
-    let rows = data.map(t => `<tr>
-      <td><a href=/track/${t.id}>${t.title}</a></td>
-      <td>${t.artist||'—'}</td>
-      <td>${t.release_year||'—'}</td>
-      <td>${t.role||'—'}</td>
-      <td>${t.platform||'—'}</td>
-      <td><span class="badge badge-${(t.confidence||'Unknown').toLowerCase()}">${t.confidence||'Unknown'}</span></td>
-    </tr>`).join('');
-    resDiv.innerHTML = `<div class=card><h3>📊 ${data.length} نتيجة</h3><div class=table-wrap><table><tr><th>Track</th><th>Artist</th><th>Year</th><th>Role</th><th>Platform</th><th>Confidence</th></tr>${rows}</table></div></div>`;
-  } catch(e) {
-    resDiv.innerHTML = '<div class=card style="text-align:center;padding:30px;color:var(--red)">❌ خطأ في الاتصال: ' + e.message + '</div>';
+document.getElementById('searchForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var g = function(id) { return (document.getElementById(id).value || '').trim(); };
+  var artistNameAr = g('artistName_ar'), artistNameEn = g('artistName_en');
+  var professionAr = g('profession_ar'), professionEn = g('profession_en');
+  var sel = document.getElementById('platforms');
+  var platforms = [];
+  for (var i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].selected && sel.options[i].value) platforms.push(sel.options[i].value);
   }
+
+  if (!artistNameAr && !artistNameEn && !professionAr && !professionEn && platforms.length === 0) {
+    alert('⚠️ الرجاء ملء حقل واحد على الأقل');
+    return;
+  }
+
+  var results = [];
+  for (var i = 0; i < artistsDatabase.length; i++) {
+    var a = artistsDatabase[i];
+    var nameMatch = (!artistNameAr || a.name_ar.indexOf(artistNameAr) !== -1) &&
+      (!artistNameEn || a.name_en.toLowerCase().indexOf(artistNameEn.toLowerCase()) !== -1);
+    var profMatch = (!professionAr || a.profession_ar.indexOf(professionAr) !== -1) &&
+      (!professionEn || a.profession_en.toLowerCase().indexOf(professionEn.toLowerCase()) !== -1);
+    var platMatch = platforms.length === 0;
+    for (var p = 0; p < platforms.length; p++) {
+      if (a.platforms.indexOf(platforms[p]) !== -1) { platMatch = true; break; }
+    }
+    if (nameMatch && profMatch && platMatch) results.push(a);
+  }
+
+  var rc = document.getElementById('searchResults');
+  if (results.length === 0) {
+    rc.innerHTML = '<div class=card style="text-align:center;padding:30px"><h3>😔 لا توجد نتائج</h3><small>جرب بحثاً آخر</small></div>';
+    return;
+  }
+  var icons = {youtube:'🎥',spotify:'🎵','apple-music':'🎧',soundcloud:'☁️',bandcamp:'🎼',tiktok:'📱',instagram:'📸'};
+  var cards = '';
+  for (var r = 0; r < results.length; r++) {
+    var art = results[r];
+    var phtml = '';
+    for (var pi = 0; pi < art.platforms.length; pi++) {
+      phtml += '<span style="display:inline-block;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;margin:2px">' + (icons[art.platforms[pi]] || '') + ' ' + art.platforms[pi] + '</span>';
+    }
+    cards += '<div class=card style="padding:15px"><div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><div style="font-size:40px">' + art.image + '</div><div><h3 style="margin:0">' + art.name_ar + ' | ' + art.name_en + '</h3><p style="margin:4px 0 0;color:var(--gold);font-size:13px">' + art.profession_ar + ' | ' + art.profession_en + '</p></div></div><div style="margin-bottom:8px"><span>👥 ' + art.followers.toLocaleString() + ' متابع</span></div><div style="margin-bottom:10px"><strong style="font-size:12px">المنصات:</strong><br>' + phtml + '</div></div>';
+  }
+  rc.innerHTML = '<h3 style="margin-bottom:15px">📊 ' + results.length + ' نتيجة</h3><div class="results-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:15px">' + cards + '</div>';
 });
 </script>"""
     return page("Advanced Search", "بحث متقدم", html, "advanced-search")
