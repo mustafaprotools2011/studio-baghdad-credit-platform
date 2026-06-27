@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 بحث متقدم - منصة اعتمادات موسيقية</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a0f;
+            --bg2: #0f0f18;
+            --bg3: #181825;
+            --border: #2a2a3e;
+            --text: #e8e8f0;
+            --text2: #9898b8;
+            --text3: #6a6a88;
+            --gold: #d4a843;
+            --gold2: #f5c842;
+        }
+        body {
+            font-family: 'Cairo', 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            direction: rtl;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+        .search-header { text-align: center; margin-bottom: 50px; }
+        .search-header h1 {
+            font-size: 2.5rem;
+            color: var(--gold);
+            margin-bottom: 10px;
+            text-shadow: 0 2px 8px rgba(212, 168, 67, 0.2);
+        }
+        .search-header p { font-size: 1rem; color: var(--text2); line-height: 1.6; }
+        .search-form-wrapper {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            margin-bottom: 40px;
+        }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 30px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full-width { grid-column: 1 / -1; }
+        .form-group label {
+            font-size: 0.9rem; font-weight: 600; color: var(--gold);
+            margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .input-field, .select-field {
+            padding: 14px 16px; background: #0f3460; border: 2px solid var(--gold);
+            border-radius: 8px; color: var(--text); font-size: 0.95rem;
+            font-family: inherit; transition: all 0.3s ease;
+        }
+        .input-field::placeholder { color: #7a7a7a; }
+        .input-field:focus, .select-field:focus {
+            outline: none; background: #163a57; border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+        }
+        .button-group { display: flex; gap: 15px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+        .btn-search, .btn-reset {
+            padding: 13px 35px; border: none; border-radius: 8px;
+            font-size: 1rem; font-weight: 600; cursor: pointer;
+            transition: all 0.3s ease; text-transform: uppercase;
+            letter-spacing: 1px; font-family: inherit;
+        }
+        .btn-search {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold2) 100%);
+            color: #1a1a2e; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+        }
+        .btn-search:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5); }
+        .btn-reset {
+            background: #0f3460; color: var(--gold); border: 2px solid var(--gold);
+        }
+        .btn-reset:hover { background: #1a4a66; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2); }
+        .no-results {
+            text-align: center; padding: 60px 20px;
+            background: rgba(212, 175, 55, 0.05); border-radius: 10px;
+            border: 2px dashed var(--gold); color: var(--text2);
+        }
+        .no-results p { margin: 10px 0; font-size: 1.1rem; }
+        .no-results small { font-size: 0.85rem; color: var(--text3); }
+        .results-header { margin-bottom: 30px; }
+        .results-header h2 {
+            color: var(--gold); font-size: 1.5rem;
+            border-bottom: 2px solid var(--gold); padding-bottom: 15px;
+        }
+        .results-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px; margin-bottom: 40px;
+        }
+        .artist-card {
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+            border: 2px solid var(--gold); border-radius: 12px; padding: 25px;
+            transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .artist-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
+            border-color: var(--gold2);
+        }
+        .card-header { display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-start; }
+        .artist-avatar {
+            font-size: 2.5rem; min-width: 60px; text-align: center;
+            background: rgba(212, 175, 55, 0.1); padding: 10px; border-radius: 10px;
+        }
+        .artist-info { flex: 1; }
+        .artist-name { color: var(--gold); font-size: 1.2rem; margin: 0 0 5px 0; line-height: 1.3; }
+        .artist-profession { color: var(--text2); font-size: 0.85rem; margin: 0; line-height: 1.4; }
+        .card-body { background: rgba(212, 175, 55, 0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .followers { display: flex; align-items: center; gap: 10px; color: var(--text); }
+        .followers-icon { font-size: 1.3rem; }
+        .followers-count { font-weight: bold; color: var(--gold); font-size: 1.1rem; }
+        .followers-label { font-size: 0.8rem; color: var(--text3); margin-right: auto; }
+        .card-platforms { margin-bottom: 20px; }
+        .card-platforms h4 { color: var(--gold); font-size: 0.85rem; text-transform: uppercase; margin: 0 0 10px 0; letter-spacing: 1px; }
+        .platforms-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .platform-badge {
+            display: inline-block; background: rgba(212, 175, 55, 0.15);
+            color: var(--gold); padding: 6px 12px; border-radius: 20px;
+            font-size: 0.8rem; border: 1px solid var(--gold); transition: all 0.3s ease;
+        }
+        .platform-badge:hover { background: rgba(212, 175, 55, 0.3); }
+        .card-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-view, .btn-share {
+            flex: 1; min-width: 120px; padding: 10px 15px; border: none;
+            border-radius: 6px; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease; text-align: center; font-family: inherit;
+        }
+        .btn-view { background: linear-gradient(135deg, var(--gold) 0%, var(--gold2) 100%); color: #1a1a2e; }
+        .btn-view:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3); }
+        .btn-share { background: transparent; color: var(--gold); border: 1px solid var(--gold); }
+        .btn-share:hover { background: rgba(212, 175, 55, 0.1); }
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .search-form-wrapper { padding: 25px; }
+            .search-header h1 { font-size: 1.8rem; }
+            .button-group { flex-direction: column; }
+            .btn-search, .btn-reset { width: 100%; }
+            .results-grid { grid-template-columns: 1fr; }
+            .card-actions { flex-direction: column; }
+            .btn-view, .btn-share { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-header">
+            <h1>🔍 بحث متقدم | Advanced Search</h1>
+            <p>ابحث عن الفنان والوصف المهني والمنصة | Search for artist, profession & platform</p>
+        </div>
+
+        <div class="search-form-wrapper">
+            <form class="search-form" id="searchForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="artistName_ar">اسم الفنان (عربي)</label>
+                        <input type="text" id="artistName_ar" name="artistName_ar" placeholder="مثال: مصطفى كمال" class="input-field">
+                    </div>
+                    <div class="form-group">
+                        <label for="artistName_en">Artist Name (English)</label>
+                        <input type="text" id="artistName_en" name="artistName_en" placeholder="Example: Mustafa Kamal" class="input-field">
+                    </div>
+                    <div class="form-group">
+                        <label for="profession_ar">الوصف المهني (عربي)</label>
+                        <input type="text" id="profession_ar" name="profession_ar" placeholder="مثال: مهندس صوت" class="input-field">
+                    </div>
+                    <div class="form-group">
+                        <label for="profession_en">Profession (English)</label>
+                        <input type="text" id="profession_en" name="profession_en" placeholder="Example: Sound Engineer" class="input-field">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="platforms">اختر المنصات | Select Platforms</label>
+                        <select id="platforms" name="platforms" class="select-field" multiple>
+                            <option value="">-- اختر المنصة | Select Platform --</option>
+                            <option value="youtube">🎥 YouTube</option>
+                            <option value="spotify">🎵 Spotify</option>
+                            <option value="apple-music">🎧 Apple Music</option>
+                            <option value="soundcloud">☁️ SoundCloud</option>
+                            <option value="bandcamp">🎼 Bandcamp</option>
+                            <option value="tiktok">📱 TikTok</option>
+                            <option value="instagram">📸 Instagram</option>
+                            <option value="all">✨ جميع المنصات | All Platforms</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button type="submit" class="btn-search">🔍 ابحث | Search</button>
+                    <button type="reset" class="btn-reset">🔄 مسح | Clear</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="searchResults"></div>
+    </div>
+
+<script>
+    const artistsDatabase = [
+        { id: 1, name_ar: "مصطفى كمال", name_en: "Mustafa Kamal", profession_ar: "مهندس صوت", profession_en: "Sound Engineer", platforms: ["youtube", "spotify", "soundcloud"], followers: 125000, image: "🎤" },
+        { id: 2, name_ar: "أحمد شريف", name_en: "Ahmed Sharif", profession_ar: "منتج موسيقي", profession_en: "Music Producer", platforms: ["youtube", "apple-music", "bandcamp"], followers: 89000, image: "🎹" },
+        { id: 3, name_ar: "ليلى محمود", name_en: "Layla Mahmoud", profession_ar: "مغنية صوت", profession_en: "Vocalist", platforms: ["spotify", "apple-music", "tiktok", "instagram"], followers: 256000, image: "🎤" },
+        { id: 4, name_ar: "سارة علي", name_en: "Sarah Ali", profession_ar: "منسقة موسيقية", profession_en: "Music Arranger", platforms: ["youtube", "soundcloud"], followers: 67000, image: "🎼" },
+        { id: 5, name_ar: "محمود علوان", name_en: "Mahmoud Alwan", profession_ar: "مهندس ماستر", profession_en: "Mastering Engineer", platforms: ["spotify", "bandcamp"], followers: 45000, image: "🎧" },
+        { id: 6, name_ar: "فاطمة حسن", name_en: "Fatima Hassan", profession_ar: "كاتبة أغاني", profession_en: "Songwriter", platforms: ["youtube", "tiktok", "instagram"], followers: 198000, image: "✍️" }
+    ];
+
+    const SearchManager = {
+        searchHistory: JSON.parse(localStorage.getItem('searchHistory')) || [],
+        maxHistoryItems: 10,
+        init() {
+            this.setupEventListeners();
+            console.log("✅ تم تهيئة نظام البحث");
+        },
+        setupEventListeners() {
+            const form = document.getElementById('searchForm');
+            const inputs = form.querySelectorAll('input[type="text"]');
+            form.addEventListener('submit', (e) => { e.preventDefault(); this.performSearch(); });
+            inputs.forEach(input => { input.addEventListener('input', () => this.liveSearch()); });
+        },
+        liveSearch() {
+            const hasInput = ['artistName_ar','artistName_en','profession_ar','profession_en'].some(id => document.getElementById(id).value.trim());
+            if (hasInput) this.performSearch();
+            else document.getElementById('searchResults').innerHTML = '';
+        },
+        performSearch() {
+            const g = id => document.getElementById(id).value.trim();
+            const artistNameAr = g('artistName_ar'), artistNameEn = g('artistName_en');
+            const professionAr = g('profession_ar'), professionEn = g('profession_en');
+            const platforms = Array.from(document.getElementById('platforms').selectedOptions).map(o => o.value).filter(v => v);
+            if (!artistNameAr && !artistNameEn && !professionAr && !professionEn && platforms.length === 0) {
+                alert('⚠️ الرجاء ملء حقل واحد على الأقل');
+                return;
+            }
+            const results = this.filterResults(artistNameAr, artistNameEn, professionAr, professionEn, platforms);
+            if (artistNameAr || artistNameEn) this.addToSearchHistory(artistNameAr || artistNameEn);
+            this.displayResults(results);
+        },
+        filterResults(artistNameAr, artistNameEn, professionAr, professionEn, platforms) {
+            return artistsDatabase.filter(artist => {
+                const nameMatch = (!artistNameAr || artist.name_ar.includes(artistNameAr)) && (!artistNameEn || artist.name_en.toLowerCase().includes(artistNameEn.toLowerCase()));
+                const profMatch = (!professionAr || artist.profession_ar.includes(professionAr)) && (!professionEn || artist.profession_en.toLowerCase().includes(professionEn.toLowerCase()));
+                const platMatch = platforms.length === 0 || platforms.some(p => artist.platforms.includes(p));
+                return nameMatch && profMatch && platMatch;
+            });
+        },
+        displayResults(results) {
+            const rc = document.getElementById('searchResults');
+            if (results.length === 0) {
+                rc.innerHTML = '<div class="no-results"><p>😔 لم يتم العثور على نتائج</p><p>No results found</p><small>جرب بحثاً آخر | Try a different search</small></div>';
+                return;
+            }
+            const icons = {youtube:'🎥',spotify:'🎵','apple-music':'🎧',soundcloud:'☁️',bandcamp:'🎼',tiktok:'📱',instagram:'📸'};
+            rc.innerHTML = '<div class="results-header"><h2>📊 نتائج البحث: ' + results.length + ' | Search Results: ' + results.length + '</h2></div><div class="results-grid">' +
+                results.map(a => {
+                    const phtml = a.platforms.map(p => '<span class="platform-badge">' + (icons[p]||'') + ' ' + p + '</span>').join('');
+                    return '<div class="artist-card"><div class="card-header"><div class="artist-avatar">' + a.image + '</div><div class="artist-info"><h3 class="artist-name">' + a.name_ar + ' | ' + a.name_en + '</h3><p class="artist-profession">' + a.profession_ar + ' | ' + a.profession_en + '</p></div></div><div class="card-body"><div class="followers"><span class="followers-icon">👥</span><span class="followers-count">' + a.followers.toLocaleString('ar-SA') + '</span><span class="followers-label">متابع | Followers</span></div></div><div class="card-platforms"><h4>المنصات | Platforms:</h4><div class="platforms-list">' + phtml + '</div></div><div class="card-actions"><button class="btn-view" onclick="SearchManager.viewArtistDetail(' + a.id + ')">👁 التفاصيل | Details</button><button class="btn-share" onclick="SearchManager.shareArtist(\'' + a.name_en + '\')">📤 مشاركة | Share</button></div></div>';
+                }).join('') + '</div>';
+        },
+        viewArtistDetail(artistId) {
+            const a = artistsDatabase.find(x => x.id === artistId);
+            if (!a) return;
+            alert('📋 ' + a.name_ar + ' (' + a.name_en + ')\nالمهنة: ' + a.profession_ar + ' (' + a.profession_en + ')\nالمتابعون: ' + a.followers.toLocaleString('ar-SA') + '\nالمنصات: ' + a.platforms.join(', '));
+        },
+        shareArtist(artistName) {
+            const text = '🎤 اكتشفت فنان جديد: ' + artistName + ' على منصة البحث! 🎵';
+            if (navigator.share) navigator.share({ title: 'Music Platform', text });
+            else { navigator.clipboard.writeText(text); alert('✅ تم نسخ رابط المشاركة | Link copied!'); }
+        },
+        addToSearchHistory(query) {
+            this.searchHistory = this.searchHistory.filter(i => i !== query);
+            this.searchHistory.unshift(query);
+            if (this.searchHistory.length > this.maxHistoryItems) this.searchHistory.pop();
+            localStorage.setItem('searchHistory', JSON.stringify(this.searchHistory));
+        }
+    };
+    document.addEventListener('DOMContentLoaded', () => { SearchManager.init(); });
+</script>
+</body>
+</html>
