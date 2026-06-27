@@ -188,6 +188,7 @@ def page(title, subtitle, content, page_name):
         ("royalties", "Royalties", "💰"), ("evidence", "Evidence", "📁"),
         ("upload-image", "Upload OCR", "📤"),
         ("add-credit", "➕ Add Credit", "➕"),
+        ("advanced-search", "🔍 Advanced Search", "🔍"),
         ("settings", "Settings", "⚙️")
     ]
     for p, label, icon in items:
@@ -756,6 +757,135 @@ def add_credit():
     </script>
     """
     return page("Add Credit", "إضافة كريديت جديد", html, "add-credit")
+
+@app.route("/advanced-search")
+def advanced_search():
+    html = """<div class="search-container" style="max-width:900px;margin:0 auto">
+  <div class="search-header">
+    <h1>🔍 بحث متقدم | Advanced Search</h1>
+    <p>ابحث عن الفنان والوصف المهني والمنصة | Search for artist, profession & platform</p>
+  </div>
+
+  <form class="search-form" id="searchForm">
+    <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:15px">
+      <div class="form-group">
+        <label for="artistName_ar">اسم الفنان (عربي)</label>
+        <input type="text" id="artistName_ar" name="artistName_ar" placeholder="مثال: مصطفى كمال"
+               style="width:100%;padding:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px">
+      </div>
+      <div class="form-group">
+        <label for="artistName_en">Artist Name (English)</label>
+        <input type="text" id="artistName_en" name="artistName_en" placeholder="Example: Mustafa Kamal"
+               style="width:100%;padding:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px">
+      </div>
+      <div class="form-group">
+        <label for="profession_ar">الوصف المهني (عربي)</label>
+        <input type="text" id="profession_ar" name="profession_ar" placeholder="مثال: مهندس صوت"
+               style="width:100%;padding:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px">
+      </div>
+      <div class="form-group">
+        <label for="profession_en">Profession (English)</label>
+        <input type="text" id="profession_en" name="profession_en" placeholder="Example: Sound Engineer"
+               style="width:100%;padding:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:15px">
+      <label for="platforms">اختر المنصات | Select Platforms</label>
+      <select id="platforms" name="platforms" multiple style="width:100%;padding:10px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px;min-height:100px">
+        <option value="youtube">🎥 YouTube</option>
+        <option value="spotify">🎵 Spotify</option>
+        <option value="apple-music">🎧 Apple Music</option>
+        <option value="soundcloud">☁️ SoundCloud</option>
+        <option value="bandcamp">🎼 Bandcamp</option>
+        <option value="tiktok">📱 TikTok</option>
+        <option value="instagram">📸 Instagram</option>
+        <option value="">✨ جميع المنصات | All Platforms</option>
+      </select>
+    </div>
+    <div class="button-group" style="display:flex;gap:12px;margin-top:15px">
+      <button type="submit" class="btn-search" style="flex:1;padding:12px;background:var(--gold);color:var(--bg);border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:15px">
+        🔍 ابحث | Search
+      </button>
+      <button type="reset" class="btn-reset" style="flex:1;padding:12px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:15px">
+        🔄 مسح | Clear
+      </button>
+    </div>
+  </form>
+
+  <div id="searchResults" class="search-results" style="margin-top:20px"></div>
+</div>
+
+<script>
+document.getElementById('searchForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const fd = new FormData(this);
+  const params = new URLSearchParams();
+  for (let [k,v] of fd.entries()) { if(v.trim()) params.append(k, v.trim()); }
+  const resDiv = document.getElementById('searchResults');
+  resDiv.innerHTML = '<div style="text-align:center;padding:30px;color:var(--gold)">⏳ جاري البحث...</div>';
+
+  try {
+    const r = await fetch('/api/credits/search?' + params.toString());
+    const data = await r.json();
+    if (data.length === 0) {
+      resDiv.innerHTML = '<div class=card style="text-align:center;padding:30px"><h3>❌ لا توجد نتائج</h3><p>حاول تغيير معايير البحث</p></div>';
+      return;
+    }
+    let rows = data.map(t => `<tr>
+      <td><a href=/track/${t.id}>${t.title}</a></td>
+      <td>${t.artist||'—'}</td>
+      <td>${t.release_year||'—'}</td>
+      <td>${t.role||'—'}</td>
+      <td>${t.platform||'—'}</td>
+      <td><span class="badge badge-${(t.confidence||'Unknown').toLowerCase()}">${t.confidence||'Unknown'}</span></td>
+    </tr>`).join('');
+    resDiv.innerHTML = `<div class=card><h3>📊 ${data.length} نتيجة</h3><div class=table-wrap><table><tr><th>Track</th><th>Artist</th><th>Year</th><th>Role</th><th>Platform</th><th>Confidence</th></tr>${rows}</table></div></div>`;
+  } catch(e) {
+    resDiv.innerHTML = '<div class=card style="text-align:center;padding:30px;color:var(--red)">❌ خطأ في الاتصال: ' + e.message + '</div>';
+  }
+});
+</script>"""
+    return page("Advanced Search", "بحث متقدم", html, "advanced-search")
+
+
+@app.route("/api/credits/search")
+def api_search_credits():
+    try:
+        where = ["t.is_active=1"]
+        params = []
+        name_ar = request.args.get("artistName_ar", "").strip()
+        name_en = request.args.get("artistName_en", "").strip()
+        prof_ar = request.args.get("profession_ar", "").strip()
+        prof_en = request.args.get("profession_en", "").strip()
+        platforms = request.args.getlist("platforms")
+
+        if name_ar:
+            where.append("(t.title_arabic LIKE ? OR a.name_arabic LIKE ? OR t.notes LIKE ?)")
+            like = f"%{name_ar}%"
+            params.extend([like, like, like])
+        if name_en:
+            where.append("(t.title LIKE ? OR a.name LIKE ? OR t.exact_credit LIKE ?)")
+            like = f"%{name_en}%"
+            params.extend([like, like, like])
+        if prof_ar:
+            where.append("(t.mustafa_role LIKE ? OR t.notes LIKE ? OR c.name_arabic LIKE ?)")
+            like = f"%{prof_ar}%"
+            params.extend([like, like, like])
+        if prof_en:
+            where.append("(t.mustafa_role LIKE ? OR t.exact_credit LIKE ?)")
+            like = f"%{prof_en}%"
+            params.extend([like, like])
+        valid_platforms = [p for p in platforms if p and p != "all"]
+        if valid_platforms:
+            placeholders = ",".join("?" for _ in valid_platforms)
+            where.append(f"t.platform IN ({placeholders})")
+            params.extend(valid_platforms)
+
+        sql = "SELECT t.*, a.name as artist FROM tracks t LEFT JOIN artists a ON t.artist_id=a.id WHERE " + " AND ".join(where) + " ORDER BY t.release_year DESC LIMIT 100"
+        return jsonify(query(sql, params))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/settings")
 def settings():
