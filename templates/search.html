@@ -200,6 +200,7 @@ document.getElementById('searchForm').addEventListener('submit', async function(
                 '<span>📅 ' + (t.release_year || '—') + '</span>' +
                 (t.platform ? '<span>📡 ' + t.platform + '</span>' : '') +
                 (roles.length ? '<span>' + roles.join(' · ') + '</span>' : '') +
+                (t.youtube_url || t.source_url ? '<span><a href="' + (t.youtube_url || t.source_url) + '" target="_blank" style="color:var(--gold);text-decoration:none">🎥 مشاهدة | Watch</a></span>' : '') +
                 '<span class="badge badge-' + confClass + '">' + (t.confidence_level || 'Unknown') + '</span>' +
                 '</div></div>';
         }
