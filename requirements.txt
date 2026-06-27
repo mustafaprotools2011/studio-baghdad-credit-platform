@@ -1,0 +1,7 @@
+# MUSTAFA MIXING OCR Scanner - متطلبات التشغيل
+pytesseract>=0.3.10
+Pillow>=9.0.0
+# yt-dlp و ffmpeg يجب تثبيتهما كنظام تشغيل:
+#   Windows: winget install yt-dlp
+#   macOS:   brew install yt-dlp ffmpeg
+#   Linux:   sudo apt install yt-dlp ffmpeg

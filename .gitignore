@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# MUSTAFA MIXING project
+scan_report.json
+ocr_results/
+ocr_scan.log
+cookies.txt
+*.mp4
+*.png
