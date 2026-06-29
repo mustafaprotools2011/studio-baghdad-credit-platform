@@ -119,7 +119,67 @@
 119|    'Verified - YouTube description credits mix and mastering to Mostapha Kamal (Mustafa Kamal)'
 120|);
 121|
-122|-- NOTE: 52 additional historical works from wneen.com remain undocumented.
-123|-- These are older tracks (2011-2025) spanning artists like حسام الماجد, احمد جواد,
-124|-- نور الزين, زيد الحبيب, صباح محمود, ساريه السواس, خالد الحنين, and others.
-125|-- Full wneen.com catalog: https://www.wneen.com/master/13 and https://www.wneen.com/mixer/19
+-- Credit 7: سجى اكرم - حبيبي اسمع (2025)
+-- Found via daily scan 2026-06-27
+-- Source: YouTube (Studio Baghdad channel)
+-- Description credits: مكس وماسترنغ مصطفى كمال
+INSERT OR IGNORE INTO tracks (
+    title, title_arabic, artist_id, release_year,
+    role_mixing, role_mastering,
+    exact_credit, source_url, platform, confidence_score,
+    confidence_level, verification_status, verification_notes
+) VALUES (
+    'Saja Akram - Habibi Esma3 (2025)',
+    'سجى اكرم - حبيبي اسمع',
+    (SELECT id FROM artists WHERE name LIKE '%سجى اكرم%' LIMIT 1),
+    2025, 1, 1,
+    'مكس وماسترنغ مصطفى كمال',
+    'https://www.youtube.com/watch?v=Il_HNhhtU2Y',
+    'YouTube (Studio Baghdad - ستوديو بغداد)',
+    95, 'Verified',
+    'Verified - YouTube description credits mix and mastering to Mustafa Kamal'
+);
+
+-- Credit 8: معهد الفنون الجميلة (2025)
+-- Found via daily scan 2026-06-28 (YouTube RSS - Studio Baghdad channel)
+-- Description credits: التاليف الموسيقي مصطفى كمال
+INSERT OR IGNORE INTO tracks (
+    title, title_arabic, artist_id, release_year,
+    role_composing,
+    exact_credit, source_url, platform, confidence_score,
+    confidence_level, verification_status, verification_notes
+) VALUES (
+    'Ma3had Al Funoun Al Jamila (Institute of Fine Arts)',
+    'معهد الفنون الجميلة',
+    (SELECT id FROM artists WHERE name LIKE '%ستوديو بغداد%' OR name LIKE '%Studio Baghdad%' LIMIT 1),
+    2025, 1,
+    'التاليف الموسيقي مصطفى كمال',
+    'https://www.youtube.com/watch?v=qCQmrdikuXc',
+    'YouTube (ستوديو بغداد - Studio Baghdad)',
+    90, 'Likely',
+    'Pending Review - YouTube description credits composition to Mustafa Kamal. Instrumental/educational piece.'
+);
+
+-- Credit 9: حسام الماجد - أنت / Hussam Almajad - Anta (2025)
+-- Found via daily scan 2026-06-28 (YouTube RSS - حسام الماجد channel)
+-- Description credits: Mastering By: Mostafa Kamal / ماسترينغ: مصطفى كمال
+INSERT OR IGNORE INTO tracks (
+    title, title_arabic, artist_id, release_year, role_mastering,
+    exact_credit, source_url, platform, confidence_score,
+    confidence_level, verification_status, verification_notes
+) VALUES (
+    'Hussam Almajad - Anta (2025)',
+    'حسام الماجد - أنت',
+    (SELECT id FROM artists WHERE name LIKE '%حسام الماجد%' LIMIT 1),
+    2025, 1,
+    'Mastering By: Mostafa Kamal / ماسترينغ: مصطفى كمال',
+    'https://www.youtube.com/watch?v=cvHY7zHaWRs',
+    'YouTube (حسام الماجد - Hussam Almajad)',
+    95, 'Verified',
+    'Verified - YouTube description credits mastering to Mostafa Kamal (Mustafa Kamal)'
+);
+
+-- NOTE: 52 additional historical works from wneen.com remain undocumented.
+-- These are older tracks (2011-2025) spanning artists like حسام الماجد, احمد جواد,
+-- نور الزين, زيد الحبيب, صباح محمود, ساريه السواس, خالد الحنين, and others.
+-- Full wneen.com catalog: https://www.wneen.com/master/13 and https://www.wneen.com/mixer/19
